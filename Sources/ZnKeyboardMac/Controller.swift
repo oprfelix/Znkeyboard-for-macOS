@@ -9,8 +9,7 @@ final class Controller {
 
     var isPanelVisible: Bool { panel.isVisible }
 
-    /// [wholeField]: from the caret toolbar, where nothing selected means the whole field.
-    func run(_ mode: RewriteMode, wholeField: Bool = false) {
+    func run(_ mode: RewriteMode) {
         generation += 1
         let current = generation
         // A panel left open from the last request holds focus and would swallow the ⌘C below.
@@ -54,7 +53,6 @@ final class Controller {
             // The shortcut's ⌥⌘ may still be held; let it go before simulating ⌘C. The panel only
             // appears after the selection is read: once it takes focus, ⌘C would copy from it instead.
             try? await Task.sleep(nanoseconds: 150_000_000)
-            if wholeField { await TextBridge.selectWholeFieldIfNothingSelected() }
             let selection = await TextBridge.selectedText()
             guard current == generation else { return }
             showPanel()

@@ -20,20 +20,6 @@ enum TextBridge {
         }
     }
 
-    /// Selects the whole focused field when nothing is selected, so the toolbar can work on what was
-    /// just typed. Uses Accessibility where the app allows it, ⌘A otherwise.
-    static func selectWholeFieldIfNothingSelected() async {
-        if let selected = accessibilitySelectedText(), !selected.isEmpty { return }
-        let system = AXUIElementCreateSystemWide()
-        if let field = system.element(kAXFocusedUIElementAttribute),
-           let text = field.string(kAXValueAttribute),
-           field.setRange(kAXSelectedTextRangeAttribute, CFRange(location: 0, length: (text as NSString).length)) {
-            return
-        }
-        postShortcut(keyCode: kVK_ANSI_A)
-        try? await Task.sleep(nanoseconds: 80_000_000)
-    }
-
     static func selectedText() async -> String? {
         if let text = accessibilitySelectedText(), !text.isEmpty { return text }
         return await copySelection()

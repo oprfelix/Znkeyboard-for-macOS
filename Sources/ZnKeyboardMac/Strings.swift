@@ -66,10 +66,10 @@ enum L {
     }
     static var refresh: String { t("刷新", "Refresh") }
     static var shortcuts: String { t("快捷键", "Shortcuts") }
-    static var caretToolbar: String { t("光标旁快捷按钮", "Buttons next to the caret") }
+    static var caretToolbar: String { t("选中文字后显示快捷按钮", "Buttons on selected text") }
     static var caretToolbarNote: String {
-        t("停止打字约 1 秒后，光标旁出现「润色」和「AI 翻译为」。没选中文字时处理整个输入框。部分 App 拿不到光标位置时不显示，可改用快捷键。",
-          "When you pause typing, Polish and Translate appear next to the caret. With nothing selected they work on the whole field. Apps that don't report their caret don't show them; use the shortcuts there.")
+        t("在输入框里选中文字（比如 ⌘A 全选）后，旁边出现「润色」和「AI 翻译为」。拿不到选区位置的 App 不显示，可改用快捷键。",
+          "Select text in a text box (for example with ⌘A) and Polish and Translate appear beside it. Apps that don't report the selection don't show them; use the shortcuts there.")
     }
     static var shortcutsNote: String {
         t("在任意 App 里选中文字后按快捷键，确认后替换原文。",

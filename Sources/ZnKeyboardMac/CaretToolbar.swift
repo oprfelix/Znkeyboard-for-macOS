@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// Shows 润色 | AI 翻译为 [EN ▾] next to the caret once typing pauses, in any app that exposes its
-/// caret through Accessibility. Nothing is read or sent until a button is clicked.
+/// Shows 润色 | AI 翻译为 [EN ▾] next to text the user selects in an editable field (for example
+/// after ⌘A), in any app that exposes its selection through Accessibility. Nothing is read or sent
+/// until a button is clicked.
 @MainActor
 final class CaretToolbar {
     var onPolish: () -> Void = {}
@@ -17,8 +18,8 @@ final class CaretToolbar {
     private var accessibilityEnabledPIDs = Set<pid_t>()
 
     private static let pollInterval: TimeInterval = 0.3
-    /// How long typing must pause before the toolbar appears.
-    private static let idleDelay: TimeInterval = 0.9
+    /// How long a selection must hold still (mid-drag it keeps changing) before the toolbar appears.
+    private static let settleDelay: TimeInterval = 0.25
     private static let chromiumBrowsers: Set<String> = [
         "com.google.Chrome", "com.microsoft.edgemac", "com.brave.Browser", "company.thebrowser.Browser",
         "com.operasoftware.Opera", "com.vivaldi.Vivaldi",
@@ -64,11 +65,11 @@ final class CaretToolbar {
             return
         }
         enableAccessibility(for: app)
-        guard let field = FocusedField.current(in: app) else {
+        guard let field = FocusedField.current(in: app), field.hasSelection else {
             reset()
             return
         }
-        // Any change in text, caret or position counts as typing: hide and restart the wait.
+        // A changing selection (dragging, extending with ⇧) hides the toolbar until it settles.
         let caret = field.caretRect
         let signature = "\(app.processIdentifier)|\(field.signature)|\(Int(caret.minX)),\(Int(caret.minY))"
         if signature != lastSignature {
@@ -77,7 +78,7 @@ final class CaretToolbar {
             hide()
             return
         }
-        guard Date().timeIntervalSince(unchangedSince) >= Self.idleDelay, !panel.isVisible else { return }
+        guard Date().timeIntervalSince(unchangedSince) >= Self.settleDelay, !panel.isVisible else { return }
         model.language = Preferences.translateTarget.code
         show(below: caret)
     }
@@ -87,7 +88,7 @@ final class CaretToolbar {
         hide()
     }
 
-    /// Just below and right of the caret; above it when there is no room below.
+    /// Just below the end of the selection; above it when there is no room below.
     private func show(below caret: NSRect) {
         guard let content = panel.contentView else { return }
         content.layoutSubtreeIfNeeded()

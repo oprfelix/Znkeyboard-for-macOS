@@ -1,14 +1,16 @@
 import AppKit
 import ApplicationServices
 
-/// The text field the user is typing in, with its caret on screen. Built only when the app exposes
-/// all of it through Accessibility; otherwise there is nothing to anchor the toolbar to.
+/// The text field the user is typing in, with its selection on screen. Built only when the app
+/// exposes it through Accessibility; otherwise there is nothing to anchor the toolbar to.
 struct FocusedField {
     let element: AXUIElement
-    /// Changes whenever the text, caret or selection changes; nothing of the text itself is kept.
+    /// Changes whenever the text or selection changes; nothing of the text itself is kept.
     let signature: String
-    /// In AppKit screen coordinates (origin bottom-left of the primary screen).
+    /// The selection (or caret) in AppKit screen coordinates (origin bottom-left of the primary screen).
     let caretRect: NSRect
+    /// Some text is selected, not just a caret.
+    let hasSelection: Bool
 
     static func current(in app: NSRunningApplication) -> FocusedField? {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
@@ -31,14 +33,16 @@ struct FocusedField {
 
         // Native text views report a character range; web pages (Chrome, Safari) often only text markers.
         if let selection = element.range(kAXSelectedTextRangeAttribute), let caret = caretRect(element, selection) {
-            CaretLog.note("ok range: \(role)")
+            CaretLog.note("ok range: \(role), selected \(selection.length > 0)")
             let signature = "\(text?.hashValue ?? 0)|\(selection.location)|\(selection.length)"
-            return FocusedField(element: element, signature: signature, caretRect: caret)
+            return FocusedField(element: element, signature: signature, caretRect: caret, hasSelection: selection.length > 0)
         }
-        if let (markers, rect) = markerCaret(element), let caret = convert(rect) {
-            CaretLog.note("ok markers: \(role)")
-            let signature = "\(text?.hashValue ?? 0)|\(markers)"
-            return FocusedField(element: element, signature: signature, caretRect: caret)
+        if let rect = markerSelectionBounds(element), let caret = convert(rect) {
+            // The marker objects are new on every read, so the signature uses what they describe.
+            let selectedCount = element.string(kAXSelectedTextAttribute)?.count ?? (rect.width > 3 ? Int(rect.width) : 0)
+            CaretLog.note("ok markers: \(role), selected \(selectedCount > 0)")
+            let signature = "\(text?.hashValue ?? 0)|\(selectedCount)|\(Int(rect.minX)),\(Int(rect.minY)),\(Int(rect.width)),\(Int(rect.height))"
+            return FocusedField(element: element, signature: signature, caretRect: caret, hasSelection: selectedCount > 0)
         }
         CaretLog.note("no caret: \(role), value \(text == nil ? "missing" : "present")")
         return nil
@@ -68,8 +72,8 @@ struct FocusedField {
         return rect.flatMap(convert)
     }
 
-    /// The selection as an opaque text-marker range and its bounds, as WebKit and Chromium report it.
-    private static func markerCaret(_ element: AXUIElement) -> (String, CGRect)? {
+    /// Bounds of the selection's text-marker range, as WebKit and Chromium report it.
+    private static func markerSelectionBounds(_ element: AXUIElement) -> CGRect? {
         guard let markers = element.value("AXSelectedTextMarkerRange") else { return nil }
         var result: CFTypeRef?
         guard AXUIElementCopyParameterizedAttributeValue(
@@ -77,7 +81,7 @@ struct FocusedField {
         ) == .success, let result, CFGetTypeID(result) == AXValueGetTypeID() else { return nil }
         var rect = CGRect.zero
         guard AXValueGetValue(result as! AXValue, .cgRect, &rect) else { return nil }
-        return (String(describing: markers), rect)
+        return rect
     }
 
     /// From Accessibility's top-left origin to AppKit's bottom-left one; nil if not a plausible caret.
