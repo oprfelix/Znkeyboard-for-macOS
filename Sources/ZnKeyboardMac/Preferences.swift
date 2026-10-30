@@ -6,6 +6,13 @@ enum Preferences {
     static let defaultModel = "gemini-3.5-flash-lite"
     private static let modelKey = "geminiModel"
     private static let targetKey = "translateTarget"
+    private static let uiLanguageKey = "uiLanguage"
+
+    /// "system", "zh" or "en".
+    static var uiLanguage: String {
+        get { UserDefaults.standard.string(forKey: uiLanguageKey) ?? "system" }
+        set { UserDefaults.standard.set(newValue, forKey: uiLanguageKey) }
+    }
 
     /// The saved Gemini model, or the default when none is saved or it is not a Lite model.
     static var model: String {

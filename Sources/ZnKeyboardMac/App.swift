@@ -92,7 +92,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func showSettings() {
         if settingsWindow == nil {
-            let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView()))
+            let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(onChange: { [weak self] in
+                self?.settingsWindow?.title = L.settingsTitle
+            })))
             window.title = L.settingsTitle
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false

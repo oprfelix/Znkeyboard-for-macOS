@@ -23,12 +23,14 @@ final class ReviewPanelController {
     private lazy var panel: NSPanel = {
         let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: 440, height: 160),
-            styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
+            styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
             defer: true
         )
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
+        // The rounded card is drawn by SwiftUI; the window itself stays invisible.
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
         panel.isMovableByWindowBackground = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
@@ -145,7 +147,8 @@ private struct ReviewView: View {
             }
         }
         .padding(16)
-        .padding(.top, 8)
         .frame(width: 440, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.separator))
     }
 }

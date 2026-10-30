@@ -10,6 +10,8 @@ final class Controller {
     func run(_ mode: RewriteMode) {
         generation += 1
         let current = generation
+        // A panel left open from the last request holds focus and would swallow the ⌘C below.
+        panel.close()
         let title: String
         switch mode {
         case .polish: title = L.polish
@@ -17,37 +19,43 @@ final class Controller {
         }
         // The app whose text is selected; the paste must land there.
         let sourceApp = NSWorkspace.shared.frontmostApplication
-
-        panel.show(
-            title: title,
-            onReplace: { [weak self] text in
-                self?.panel.close()
-                sourceApp?.activate()
-                Task { await TextBridge.replaceSelection(with: text) }
-            },
-            onOpenSettings: { [weak self] in
-                self?.panel.close()
-                self?.openSettings()
-            }
-        )
+        let showPanel = { [weak self] in
+            self?.panel.show(
+                title: title,
+                onReplace: { text in
+                    self?.panel.close()
+                    sourceApp?.activate()
+                    Task { await TextBridge.replaceSelection(with: text) }
+                },
+                onOpenSettings: {
+                    self?.panel.close()
+                    self?.openSettings()
+                }
+            )
+        }
 
         guard TextBridge.isTrusted else {
             TextBridge.requestTrust()
+            showPanel()
             panel.showError(L.needAccessibility, offerSettings: true)
             return
         }
         let apiKey = Preferences.apiKey
         guard !apiKey.isEmpty else {
+            showPanel()
             panel.showError(L.needKey, offerSettings: true)
             return
         }
 
         Task {
-            // The shortcut's ⌥⌘ may still be held; let it go before simulating ⌘C.
+            // The shortcut's ⌥⌘ may still be held; let it go before simulating ⌘C. The panel only
+            // appears after the selection is read: once it takes focus, ⌘C would copy from it instead.
             try? await Task.sleep(nanoseconds: 150_000_000)
-            guard let selection = await TextBridge.selectedText(),
-                  !selection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                if current == generation { panel.showError(L.noSelection) }
+            let selection = await TextBridge.selectedText()
+            guard current == generation else { return }
+            showPanel()
+            guard let selection, !selection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                panel.showError(L.noSelection)
                 return
             }
             let (leading, core, trailing) = Self.splitWhitespace(selection)

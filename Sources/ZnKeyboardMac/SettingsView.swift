@@ -10,10 +10,24 @@ struct SettingsView: View {
     @State private var model = Preferences.model
     @State private var target = Preferences.translateTarget.code
     @State private var trusted = TextBridge.isTrusted
+    @State private var uiLanguage = Preferences.uiLanguage
     private let permissionTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Form {
+            Section {
+                Picker(L.uiLanguage, selection: $uiLanguage) {
+                    Text(L.followSystem).tag("system")
+                    Text("中文").tag("zh")
+                    Text("English").tag("en")
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: uiLanguage) { _, value in
+                    Preferences.uiLanguage = value
+                    onChange()
+                }
+            }
+
             Section(L.apiKeySection) {
                 HStack {
                     SecureField(L.apiKeyPlaceholder, text: $apiKey)

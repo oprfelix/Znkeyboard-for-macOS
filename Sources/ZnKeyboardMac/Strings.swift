@@ -2,7 +2,14 @@ import Foundation
 
 /// UI text in Chinese when the system's first language is Chinese, English otherwise.
 enum L {
-    static let isChinese = Locale.preferredLanguages.first?.hasPrefix("zh") ?? false
+    /// Follows the setting; "system" uses the Mac's first preferred language.
+    static var isChinese: Bool {
+        switch Preferences.uiLanguage {
+        case "zh": true
+        case "en": false
+        default: Locale.preferredLanguages.first?.hasPrefix("zh") ?? false
+        }
+    }
 
     private static func t(_ zh: String, _ en: String) -> String { isChinese ? zh : en }
 
@@ -40,6 +47,8 @@ enum L {
 
     // Settings
     static var settingsTitle: String { t("ZnKeyboard 设置", "ZnKeyboard Settings") }
+    static var uiLanguage: String { t("界面语言", "Language") }
+    static var followSystem: String { t("跟随系统", "System") }
     static var apiKeySection: String { t("Gemini API Key", "Gemini API Key") }
     static var apiKeyPlaceholder: String { t("粘贴你的 API Key", "Paste your API key") }
     static var save: String { t("保存", "Save") }
