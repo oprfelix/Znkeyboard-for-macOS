@@ -6,6 +6,8 @@ final class Controller {
     private let panel = ReviewPanelController()
     private var generation = 0
     var openSettings: () -> Void = {}
+    /// The menu bar icon fills in while a request is running.
+    var onBusyChange: (Bool) -> Void = { _ in }
 
     var isPanelVisible: Bool { panel.isVisible }
 
@@ -68,6 +70,8 @@ final class Controller {
                 return
             }
             let (leading, core, trailing) = Self.splitWhitespace(selection)
+            onBusyChange(true)
+            defer { if current == generation { onBusyChange(false) } }
             do {
                 let result = try await client.rewrite(core, mode: mode)
                 guard current == generation, panel.isVisible else { return }

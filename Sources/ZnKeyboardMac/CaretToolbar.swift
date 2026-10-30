@@ -1,9 +1,10 @@
 import AppKit
 import SwiftUI
 
-/// Shows 润色 | AI 翻译为 [EN ▾] next to text the user selects in an editable field (for example
-/// after ⌘A), in any app that exposes its selection through Accessibility. Nothing is read or sent
-/// until a button is clicked.
+/// Shows 润色 | AI 翻译为 [EN ▾] next to text the user selects in an editable field. Keyboard
+/// selections (⌘A, ⇧-arrows) are found through Accessibility and the toolbar sits under them;
+/// mouse selections (drag, double or triple click) put it at the pointer, since browsers often
+/// don't report where a mouse selection is. Nothing is read or sent until a button is clicked.
 @MainActor
 final class CaretToolbar {
     var onPolish: () -> Void = {}
@@ -16,6 +17,10 @@ final class CaretToolbar {
     private var lastSignature = ""
     private var unchangedSince = Date()
     private var accessibilityEnabledPIDs = Set<pid_t>()
+    private var monitors: [Any] = []
+    private var mouseDownPoint: NSPoint?
+    /// Set while the toolbar shows for a mouse selection; typing, clicking or switching apps ends it.
+    private var mouseAnchorPID: pid_t?
 
     private static let pollInterval: TimeInterval = 0.3
     /// How long a selection must hold still (mid-drag it keeps changing) before the toolbar appears.
@@ -51,6 +56,49 @@ final class CaretToolbar {
         timer = Timer.scheduledTimer(withTimeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
+        // Events in other apps only; clicks on the toolbar itself never arrive here.
+        monitors = [
+            NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
+                MainActor.assumeIsolated { self?.mouseDown() }
+            },
+            NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
+                MainActor.assumeIsolated { self?.mouseUp(clickCount: event.clickCount) }
+            },
+            NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] _ in
+                MainActor.assumeIsolated { self?.endMouseAnchor() }
+            },
+        ].compactMap { $0 }
+    }
+
+    private func mouseDown() {
+        mouseDownPoint = NSEvent.mouseLocation
+        endMouseAnchor()
+    }
+
+    /// A drag, double click or triple click in an editable field likely selected text there.
+    private func mouseUp(clickCount: Int) {
+        let point = NSEvent.mouseLocation
+        let dragged = mouseDownPoint.map { hypot($0.x - point.x, $0.y - point.y) >= 6 } ?? false
+        guard dragged || clickCount >= 2 else { return }
+        // Let the app finish updating its selection first.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self, Preferences.caretToolbar, TextBridge.isTrusted, !self.isSuspended(),
+                  let app = NSWorkspace.shared.frontmostApplication,
+                  app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+            self.enableAccessibility(for: app)
+            let state = FocusedField.selectionState(in: app)
+            CaretLog.note("mouse selection: \(state)")
+            guard state == .selected || state == .unknown else { return }
+            self.mouseAnchorPID = app.processIdentifier
+            self.model.language = Preferences.translateTarget.code
+            self.show(atPointer: point)
+        }
+    }
+
+    private func endMouseAnchor() {
+        guard mouseAnchorPID != nil else { return }
+        mouseAnchorPID = nil
+        hide()
     }
 
     func hide() {
@@ -65,6 +113,11 @@ final class CaretToolbar {
             return
         }
         enableAccessibility(for: app)
+        if let pid = mouseAnchorPID {
+            // A mouse-anchored toolbar stays until the user moves on; switching apps counts.
+            if pid != app.processIdentifier { endMouseAnchor() }
+            return
+        }
         guard let field = FocusedField.current(in: app), field.hasSelection else {
             reset()
             return
@@ -85,11 +138,19 @@ final class CaretToolbar {
 
     private func reset() {
         lastSignature = ""
+        mouseAnchorPID = nil
         hide()
     }
 
-    /// Just below the end of the selection; above it when there is no room below.
-    private func show(below caret: NSRect) {
+    /// Just below and right of where the mouse selection ended.
+    private func show(atPointer point: NSPoint) {
+        place(NSRect(x: point.x, y: point.y - 4, width: 1, height: 8))
+    }
+
+    private func show(below caret: NSRect) { place(caret) }
+
+    /// Just below [anchor]'s end; above it when there is no room below.
+    private func place(_ caret: NSRect) {
         guard let content = panel.contentView else { return }
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize

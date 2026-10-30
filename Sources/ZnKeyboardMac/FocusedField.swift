@@ -48,6 +48,22 @@ struct FocusedField {
         return nil
     }
 
+    enum SelectionState { case notEditable, empty, selected, unknown }
+
+    /// Whether the focused field is editable and has a selection, without needing its position.
+    /// Chrome often reports neither range nor bounds after a mouse selection: that is `unknown`.
+    static func selectionState(in app: NSRunningApplication) -> SelectionState {
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(appElement, 0.15)
+        guard let element = appElement.element(kAXFocusedUIElementAttribute) else { return .notEditable }
+        let role = element.string(kAXRoleAttribute) ?? "?"
+        guard element.string(kAXSubroleAttribute) != kAXSecureTextFieldSubrole as String,
+              isEditable(element, role: role) else { return .notEditable }
+        if let range = element.range(kAXSelectedTextRangeAttribute) { return range.length > 0 ? .selected : .empty }
+        if let selected = element.string(kAXSelectedTextAttribute), !selected.isEmpty { return .selected }
+        return .unknown
+    }
+
     private static let textRoles: Set<String> = [
         kAXTextFieldRole as String, kAXTextAreaRole as String, kAXComboBoxRole as String, "AXSearchField",
     ]

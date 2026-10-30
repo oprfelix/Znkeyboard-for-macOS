@@ -24,10 +24,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func applicationDidFinishLaunching(_ notification: Notification) {
         installEditMenu()
         controller.openSettings = { [weak self] in self?.showSettings() }
+        controller.onBusyChange = { [weak self] busy in self?.statusItem?.button?.image = MenuBarIcon.image(busy: busy) }
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "character.bubble", accessibilityDescription: "ZnKeyboard")
-        item.button?.image?.isTemplate = true
+        item.button?.image = MenuBarIcon.image()
+        item.button?.toolTip = "ZnKeyboard"
         let menu = NSMenu()
         menu.delegate = self
         item.menu = menu
