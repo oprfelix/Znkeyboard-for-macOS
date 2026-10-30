@@ -15,7 +15,7 @@ enum Main {
 
 /// Menu bar item, global shortcuts, and the settings window. No Dock icon (LSUIElement).
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     private let controller = Controller()
     private let caretToolbar = CaretToolbar()
     private var statusItem: NSStatusItem?
@@ -107,16 +107,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             window.title = L.settingsTitle
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
+            window.delegate = self
             window.center()
             settingsWindow = window
         }
-        NSApp.activate()
-        settingsWindow?.makeKeyAndOrderFront(nil)
+        settingsWindow?.title = L.settingsTitle
+        // A menu-bar-only app is often refused activation, leaving the window behind others. Being a
+        // regular app (with a Dock icon) while settings are open brings it to the front reliably.
+        NSApp.setActivationPolicy(.regular)
+        // After the status menu has finished closing, or the activation is lost to it.
+        DispatchQueue.main.async { [weak self] in
+            NSApp.activate(ignoringOtherApps: true)
+            self?.settingsWindow?.makeKeyAndOrderFront(nil)
+            self?.settingsWindow?.orderFrontRegardless()
+        }
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === settingsWindow else { return }
+        NSApp.setActivationPolicy(.accessory)
+    }
+
+    /// Clicking the Dock icon while settings are open brings them back.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSettings()
+        return true
     }
 
     /// A menu-bar app has no main menu, so ⌘V and friends would not work in the settings fields.
     private func installEditMenu() {
         let main = NSMenu()
+        // While settings are open the app shows a menu bar; its first menu is the app menu.
+        let appItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: L.quit, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = appMenu
+        main.addItem(appItem)
         let editItem = NSMenuItem()
         let edit = NSMenu(title: "Edit")
         edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
