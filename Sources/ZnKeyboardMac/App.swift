@@ -33,11 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         item.menu = menu
         statusItem = item
 
-        HotKeys.shared.register(id: 1, keyCode: kVK_ANSI_R, modifiers: cmdKey | optionKey) { [weak self] in
-            self?.controller.run(.polish)
-        }
-        HotKeys.shared.register(id: 2, keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey) { [weak self] in
-            self?.controller.run(.translate(Preferences.translateTarget))
+        for action in ShortcutAction.allCases {
+            registerHotKey(action, Preferences.shortcut(for: action))
         }
 
         caretToolbar.isSuspended = { [weak self] in self?.controller.isPanelVisible ?? false }
@@ -49,17 +46,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if Preferences.apiKey(for: Preferences.provider).isEmpty { showSettings() }
     }
 
+    @discardableResult
+    private func registerHotKey(_ action: ShortcutAction, _ shortcut: Shortcut) -> Bool {
+        HotKeys.shared.register(id: action.hotKeyID, shortcut: shortcut) { [weak self] in
+            switch action {
+            case .polish: self?.controller.run(.polish)
+            case .translate: self?.controller.run(.translate(Preferences.translateTarget))
+            }
+        }
+    }
+
+    /// Switches [action] to [shortcut] (its default when nil). On failure the old one stays.
+    private func applyShortcut(_ action: ShortcutAction, _ shortcut: Shortcut?) -> ShortcutResult {
+        let next = shortcut ?? action.defaultShortcut
+        if next.collides(with: Preferences.shortcut(for: action.other)) { return .usedByOther }
+        let previous = Preferences.shortcut(for: action)
+        guard registerHotKey(action, next) else {
+            registerHotKey(action, previous)
+            return .taken
+        }
+        Preferences.setShortcut(next, for: action)
+        return .ok(next)
+    }
+
     /// Rebuilt on every open so the translate item names the current language.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        let polish = NSMenuItem(title: L.polishSelection, action: #selector(polish), keyEquivalent: "r")
-        polish.keyEquivalentModifierMask = [.command, .option]
+        let polish = NSMenuItem(title: L.polishSelection, action: #selector(polish), keyEquivalent: "")
+        Self.showShortcut(Preferences.shortcut(for: .polish), on: polish)
         menu.addItem(polish)
 
         let target = Preferences.translateTarget
-        let translate = NSMenuItem(title: L.translateTo(target), action: #selector(translate), keyEquivalent: "t")
-        translate.keyEquivalentModifierMask = [.command, .option]
+        let translate = NSMenuItem(title: L.translateTo(target), action: #selector(translate), keyEquivalent: "")
+        Self.showShortcut(Preferences.shortcut(for: .translate), on: translate)
         menu.addItem(translate)
 
         let languages = NSMenu()
@@ -80,6 +100,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         for item in languages.items { item.target = self }
     }
 
+    /// Shows a global shortcut beside its menu item; keys without a single character show none.
+    private static func showShortcut(_ shortcut: Shortcut, on item: NSMenuItem) {
+        guard shortcut.key.count == 1 else { return }
+        item.keyEquivalent = shortcut.key.lowercased()
+        var mask: NSEvent.ModifierFlags = []
+        if shortcut.modifiers & cmdKey != 0 { mask.insert(.command) }
+        if shortcut.modifiers & optionKey != 0 { mask.insert(.option) }
+        if shortcut.modifiers & controlKey != 0 { mask.insert(.control) }
+        if shortcut.modifiers & shiftKey != 0 { mask.insert(.shift) }
+        item.keyEquivalentModifierMask = mask
+    }
+
     // Menu clicks happen while the menu has focus; give the source app a moment to take it back.
     @objc private func polish() { runAfterMenuCloses(.polish) }
 
@@ -98,9 +130,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     private func showSettings() {
         if settingsWindow == nil {
-            let hosting = NSHostingController(rootView: SettingsView(onChange: { [weak self] in
-                self?.settingsWindow?.title = L.settingsTitle
-            }))
+            let hosting = NSHostingController(rootView: SettingsView(
+                onChange: { [weak self] in self?.settingsWindow?.title = L.settingsTitle },
+                applyShortcut: { [weak self] action, shortcut in self?.applyShortcut(action, shortcut) ?? .taken }
+            ))
             // The window follows the form's height as notes appear and disappear.
             hosting.sizingOptions = .preferredContentSize
             let window = NSWindow(contentViewController: hosting)

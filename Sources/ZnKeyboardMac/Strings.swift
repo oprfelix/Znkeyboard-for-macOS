@@ -85,9 +85,15 @@ enum L {
     static var polishShortcut: String { t("润色快捷键", "Polish shortcut") }
     static var translateShortcut: String { t("AI 翻译快捷键", "Translate shortcut") }
     static var shortcutsNote: String {
-        t("在任意 App 选中文字后按快捷键，确认后替换原文。按钮不出现的 App 也能用。",
-          "Select text in any app and press a shortcut, then confirm to replace it. Works even where the buttons don't appear.")
+        t("在任意 App 选中文字后按快捷键，确认后替换原文。按钮不出现的 App 也能用。点快捷键可以改成你习惯的组合。",
+          "Select text in any app and press a shortcut, then confirm to replace it. Works even where the buttons don't appear. Click a shortcut to change it.")
     }
+    static var pressShortcut: String { t("按下新快捷键…", "Press keys…") }
+    static var shortcutHint: String { t("点击后按下新的组合键，Esc 取消", "Click, then press the new combination; Esc cancels") }
+    static var resetDefault: String { t("恢复默认", "Reset") }
+    static var needModifier: String { t("需要包含 ⌘、⌥ 或 ⌃ 中的至少一个。", "Include at least one of ⌘, ⌥ or ⌃.") }
+    static var shortcutUsedByOther: String { t("另一个功能已在用这个快捷键。", "The other action already uses this shortcut.") }
+    static var shortcutTaken: String { t("这个快捷键已被其他 App 占用，换一个试试。", "Another app already uses this shortcut. Try another.") }
 
     static var permission: String { t("权限", "Permission") }
     static var accessibility: String { t("辅助功能", "Accessibility") }

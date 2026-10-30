@@ -67,6 +67,17 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespaces), forKey: openAIBaseURLKey) }
     }
 
+    /// The global shortcut for [action], or its default.
+    static func shortcut(for action: ShortcutAction) -> Shortcut {
+        guard let data = UserDefaults.standard.data(forKey: "shortcut.\(action.rawValue)"),
+              let shortcut = try? JSONDecoder().decode(Shortcut.self, from: data) else { return action.defaultShortcut }
+        return shortcut
+    }
+
+    static func setShortcut(_ shortcut: Shortcut, for action: ShortcutAction) {
+        UserDefaults.standard.set(try? JSONEncoder().encode(shortcut), forKey: "shortcut.\(action.rawValue)")
+    }
+
     static var translateTarget: TranslateLanguage {
         get { Languages.language(code: UserDefaults.standard.string(forKey: targetKey) ?? "EN") }
         set { UserDefaults.standard.set(newValue.code, forKey: targetKey) }

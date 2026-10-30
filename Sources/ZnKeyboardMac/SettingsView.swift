@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     /// Called when something the menu or window title shows changes here.
     var onChange: () -> Void = {}
+    /// Registers a new global shortcut (nil: the default) and reports whether it took.
+    var applyShortcut: (ShortcutAction, Shortcut?) -> ShortcutResult = { _, shortcut in .ok(shortcut ?? .init(keyCode: 0, modifiers: 0, key: "")) }
 
     @State private var provider = Preferences.provider
     @State private var baseURL = Preferences.openAIBaseURL
@@ -102,8 +104,8 @@ struct SettingsView: View {
                     Text(L.caretToolbarNote).font(.caption).foregroundStyle(.secondary)
                 }
 
-                LabeledContent(L.polishShortcut) { ShortcutText("⌥⌘R") }
-                LabeledContent(L.translateShortcut) { ShortcutText("⌥⌘T") }
+                LabeledContent(L.polishShortcut) { ShortcutRecorder(action: .polish, apply: applyShortcut) }
+                LabeledContent(L.translateShortcut) { ShortcutRecorder(action: .translate, apply: applyShortcut) }
             } header: {
                 Text(L.usageSection)
             } footer: {
@@ -193,19 +195,5 @@ struct SettingsView: View {
         guard let client = try? Preferences.client(), !client.apiKey.isEmpty,
               let loaded = try? await client.models(), !loaded.isEmpty else { return }
         models = loaded
-    }
-}
-
-/// A shortcut shown like a key cap.
-private struct ShortcutText: View {
-    let keys: String
-    init(_ keys: String) { self.keys = keys }
-
-    var body: some View {
-        Text(keys)
-            .font(.system(.body, design: .rounded).weight(.medium))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
     }
 }
