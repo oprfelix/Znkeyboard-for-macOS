@@ -17,6 +17,7 @@ enum Main {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let controller = Controller()
+    private let caretToolbar = CaretToolbar()
     private var statusItem: NSStatusItem?
     private var settingsWindow: NSWindow?
 
@@ -38,6 +39,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         HotKeys.shared.register(id: 2, keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey) { [weak self] in
             self?.controller.run(.translate(Preferences.translateTarget))
         }
+
+        caretToolbar.isSuspended = { [weak self] in self?.controller.isPanelVisible ?? false }
+        caretToolbar.onPolish = { [weak self] in self?.controller.run(.polish, wholeField: true) }
+        caretToolbar.onTranslate = { [weak self] in
+            self?.controller.run(.translate(Preferences.translateTarget), wholeField: true)
+        }
+        caretToolbar.start()
 
         // First run: nothing works without a key, so start where it goes.
         if Preferences.apiKey.isEmpty { showSettings() }

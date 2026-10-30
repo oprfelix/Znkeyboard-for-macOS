@@ -7,6 +7,13 @@ enum Preferences {
     private static let modelKey = "geminiModel"
     private static let targetKey = "translateTarget"
     private static let uiLanguageKey = "uiLanguage"
+    private static let caretToolbarKey = "caretToolbar"
+
+    /// The 润色 | AI 翻译 buttons next to the caret. On by default.
+    static var caretToolbar: Bool {
+        get { UserDefaults.standard.object(forKey: caretToolbarKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: caretToolbarKey) }
+    }
 
     /// "system", "zh" or "en".
     static var uiLanguage: String {

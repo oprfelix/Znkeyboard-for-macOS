@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var target = Preferences.translateTarget.code
     @State private var trusted = TextBridge.isTrusted
     @State private var uiLanguage = Preferences.uiLanguage
+    @State private var caretToolbar = Preferences.caretToolbar
     private let permissionTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -61,6 +62,12 @@ struct SettingsView: View {
                     Preferences.translateTarget = Languages.language(code: code)
                     onChange()
                 }
+            }
+
+            Section {
+                Toggle(L.caretToolbar, isOn: $caretToolbar)
+                    .onChange(of: caretToolbar) { _, value in Preferences.caretToolbar = value }
+                Text(L.caretToolbarNote).font(.caption).foregroundStyle(.secondary)
             }
 
             Section(L.shortcuts) {

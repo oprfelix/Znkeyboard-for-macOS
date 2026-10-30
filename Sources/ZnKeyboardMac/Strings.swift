@@ -19,6 +19,7 @@ enum L {
         t("AI 翻译为 \(language.displayName)", "Translate to \(language.displayName)")
     }
     static var polishSelection: String { t("润色所选文字", "Polish Selected Text") }
+    static var translateShort: String { t("AI 翻译为", "Translate") }
     static var translateMenu: String { t("翻译成", "Translate To") }
     static var settings: String { t("设置…", "Settings…") }
     static var quit: String { t("退出 ZnKeyboard", "Quit ZnKeyboard") }
@@ -65,6 +66,11 @@ enum L {
     }
     static var refresh: String { t("刷新", "Refresh") }
     static var shortcuts: String { t("快捷键", "Shortcuts") }
+    static var caretToolbar: String { t("光标旁快捷按钮", "Buttons next to the caret") }
+    static var caretToolbarNote: String {
+        t("停止打字约 1 秒后，光标旁出现「润色」和「AI 翻译为」。没选中文字时处理整个输入框。部分 App 拿不到光标位置时不显示，可改用快捷键。",
+          "When you pause typing, Polish and Translate appear next to the caret. With nothing selected they work on the whole field. Apps that don't report their caret don't show them; use the shortcuts there.")
+    }
     static var shortcutsNote: String {
         t("在任意 App 里选中文字后按快捷键，确认后替换原文。",
           "Select text in any app and press a shortcut; review the result before it replaces the original.")
