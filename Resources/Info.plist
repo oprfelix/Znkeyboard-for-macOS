@@ -27,6 +27,6 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>GPL-3.0 · Based on ZnKeyboard for Android</string>
+    <string>ZnKeyboard for macOS · GPL-3.0</string>
 </dict>
 </plist>

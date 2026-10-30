@@ -70,7 +70,7 @@ final class CaretToolbar {
         }
         // Any change in text, caret or position counts as typing: hide and restart the wait.
         let caret = field.caretRect
-        let signature = "\(app.processIdentifier)|\(field.text.hashValue)|\(field.selection.location)|\(field.selection.length)|\(Int(caret.minX)),\(Int(caret.minY))"
+        let signature = "\(app.processIdentifier)|\(field.signature)|\(Int(caret.minX)),\(Int(caret.minY))"
         if signature != lastSignature {
             lastSignature = signature
             unchangedSince = Date()

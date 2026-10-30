@@ -5,8 +5,8 @@ import ApplicationServices
 /// all of it through Accessibility; otherwise there is nothing to anchor the toolbar to.
 struct FocusedField {
     let element: AXUIElement
-    let text: String
-    let selection: CFRange
+    /// Changes whenever the text, caret or selection changes; nothing of the text itself is kept.
+    let signature: String
     /// In AppKit screen coordinates (origin bottom-left of the primary screen).
     let caretRect: NSRect
 
@@ -14,27 +14,50 @@ struct FocusedField {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         // A busy app must not stall the menu bar; give up quickly and try again next tick.
         AXUIElementSetMessagingTimeout(appElement, 0.15)
-        guard let element = appElement.element(kAXFocusedUIElementAttribute),
-              element.string(kAXSubroleAttribute) != kAXSecureTextFieldSubrole as String,
-              isEditable(element),
-              let text = element.string(kAXValueAttribute),
-              text.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2,
-              let selection = element.range(kAXSelectedTextRangeAttribute),
-              let caret = caretRect(element, selection) else { return nil }
-        return FocusedField(element: element, text: text, selection: selection, caretRect: caret)
+        guard let element = appElement.element(kAXFocusedUIElementAttribute) else {
+            CaretLog.note("no focused element")
+            return nil
+        }
+        let role = element.string(kAXRoleAttribute) ?? "?"
+        guard element.string(kAXSubroleAttribute) != kAXSecureTextFieldSubrole as String, isEditable(element, role: role) else {
+            CaretLog.note("not editable: \(role)")
+            return nil
+        }
+        let text = element.string(kAXValueAttribute)
+        if let text, text.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 {
+            CaretLog.note("too short: \(role)")
+            return nil
+        }
+
+        // Native text views report a character range; web pages (Chrome, Safari) often only text markers.
+        if let selection = element.range(kAXSelectedTextRangeAttribute), let caret = caretRect(element, selection) {
+            CaretLog.note("ok range: \(role)")
+            let signature = "\(text?.hashValue ?? 0)|\(selection.location)|\(selection.length)"
+            return FocusedField(element: element, signature: signature, caretRect: caret)
+        }
+        if let (markers, rect) = markerCaret(element), let caret = convert(rect) {
+            CaretLog.note("ok markers: \(role)")
+            let signature = "\(text?.hashValue ?? 0)|\(markers)"
+            return FocusedField(element: element, signature: signature, caretRect: caret)
+        }
+        CaretLog.note("no caret: \(role), value \(text == nil ? "missing" : "present")")
+        return nil
     }
 
     private static let textRoles: Set<String> = [
         kAXTextFieldRole as String, kAXTextAreaRole as String, kAXComboBoxRole as String, "AXSearchField",
     ]
 
-    private static func isEditable(_ element: AXUIElement) -> Bool {
-        guard let role = element.string(kAXRoleAttribute) else { return false }
-        return textRoles.contains(role) || (role != kAXStaticTextRole as String && element.isSettable(kAXValueAttribute))
+    /// Text inputs, anything with a settable value, and rich editors in web pages (which sit under an
+    /// editable ancestor).
+    private static func isEditable(_ element: AXUIElement, role: String) -> Bool {
+        if textRoles.contains(role) { return true }
+        if role == kAXStaticTextRole as String { return element.value("AXEditableAncestor") != nil }
+        return element.isSettable(kAXValueAttribute) || element.value("AXEditableAncestor") != nil
     }
 
     /// Bounds of the selection, or of the character before an empty caret (an empty range often has
-    /// no bounds). Converted from Accessibility's top-left origin to AppKit's bottom-left one.
+    /// no bounds).
     private static func caretRect(_ element: AXUIElement, _ selection: CFRange) -> NSRect? {
         var rect = element.bounds(for: selection)
         if rect.map({ $0.width <= 0 && $0.height <= 0 }) ?? true, selection.location > 0 {
@@ -42,7 +65,24 @@ struct FocusedField {
                 rect = CGRect(x: previous.maxX, y: previous.minY, width: 1, height: previous.height)
             }
         }
-        guard let rect, rect.height > 0, rect.height < 200,
+        return rect.flatMap(convert)
+    }
+
+    /// The selection as an opaque text-marker range and its bounds, as WebKit and Chromium report it.
+    private static func markerCaret(_ element: AXUIElement) -> (String, CGRect)? {
+        guard let markers = element.value("AXSelectedTextMarkerRange") else { return nil }
+        var result: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(
+            element, "AXBoundsForTextMarkerRange" as CFString, markers, &result
+        ) == .success, let result, CFGetTypeID(result) == AXValueGetTypeID() else { return nil }
+        var rect = CGRect.zero
+        guard AXValueGetValue(result as! AXValue, .cgRect, &rect) else { return nil }
+        return (String(describing: markers), rect)
+    }
+
+    /// From Accessibility's top-left origin to AppKit's bottom-left one; nil if not a plausible caret.
+    private static func convert(_ rect: CGRect) -> NSRect? {
+        guard rect.height > 0, rect.height < 200,
               let primary = NSScreen.screens.first else { return nil }
         let converted = NSRect(x: rect.minX, y: primary.frame.maxY - rect.maxY, width: max(rect.width, 1), height: rect.height)
         guard NSScreen.screens.contains(where: { $0.frame.intersects(converted) }) else { return nil }
@@ -89,5 +129,28 @@ extension AXUIElement {
         ) == .success, let result, CFGetTypeID(result) == AXValueGetTypeID() else { return nil }
         var rect = CGRect.zero
         return AXValueGetValue(result as! AXValue, .cgRect, &rect) ? rect : nil
+    }
+}
+
+/// Off unless `defaults write dev.zain.znkeyboard.mac debugCaret -bool true`: why the toolbar did or
+/// didn't find a caret, one line per change, in ~/Library/Logs/ZnKeyboard/caret.log. Never any text.
+enum CaretLog {
+    private static var last = ""
+
+    static func note(_ message: String) {
+        guard UserDefaults.standard.bool(forKey: "debugCaret"), message != last else { return }
+        last = message
+        let app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"
+        let line = "\(Date()) \(app) \(message)\n"
+        let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/ZnKeyboard")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("caret.log")
+        if let handle = try? FileHandle(forWritingTo: url) {
+            handle.seekToEndOfFile()
+            handle.write(Data(line.utf8))
+            try? handle.close()
+        } else {
+            try? Data(line.utf8).write(to: url)
+        }
     }
 }

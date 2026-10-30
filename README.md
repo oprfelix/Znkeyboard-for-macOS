@@ -1,4 +1,4 @@
-# ZnKeyboard for Mac
+# ZnKeyboard for macOS
 
 Menu bar companion to ZnKeyboard for Android: polish or translate selected text in any app with
 Gemini, using the same prompts, Flash-Lite models and 14 target languages.
