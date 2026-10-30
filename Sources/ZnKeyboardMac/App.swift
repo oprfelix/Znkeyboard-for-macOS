@@ -98,9 +98,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func showSettings() {
         if settingsWindow == nil {
-            let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(onChange: { [weak self] in
+            let hosting = NSHostingController(rootView: SettingsView(onChange: { [weak self] in
                 self?.settingsWindow?.title = L.settingsTitle
-            })))
+            }))
+            // The window follows the form's height as notes appear and disappear.
+            hosting.sizingOptions = .preferredContentSize
+            let window = NSWindow(contentViewController: hosting)
             window.title = L.settingsTitle
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false

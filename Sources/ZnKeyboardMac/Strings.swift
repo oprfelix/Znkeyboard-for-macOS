@@ -48,40 +48,46 @@ enum L {
 
     // Settings
     static var settingsTitle: String { t("ZnKeyboard 设置", "ZnKeyboard Settings") }
-    static var uiLanguage: String { t("界面语言", "Language") }
-    static var followSystem: String { t("跟随系统", "System") }
-    static var apiKeySection: String { t("Gemini API Key", "Gemini API Key") }
-    static var apiKeyPlaceholder: String { t("粘贴你的 API Key", "Paste your API key") }
+
+    static var aiSection: String { t("AI 服务", "AI service") }
+    static var apiKey: String { t("API Key", "API key") }
+    static var apiKeyPlaceholder: String { t("输入 Gemini API Key", "Enter your Gemini API key") }
     static var save: String { t("保存", "Save") }
-    static var saved: String { t("已保存", "Saved") }
-    static var apiKeyNote: String {
-        t("Key 保存在系统钥匙串里。润色和翻译的文字会直接发给 Google Gemini。",
-          "The key is kept in your Keychain. Text you polish or translate goes straight to Google Gemini.")
-    }
-    static var getKey: String { t("获取 API Key", "Get an API key") }
+    static var keyStored: String { t("已保存在本机钥匙串", "Saved in your Keychain") }
+    static var noKeyYet: String { t("还没有 Key？", "No key yet?") }
+    static var getKey: String { t("在 Google AI Studio 免费获取", "Get one free in Google AI Studio") }
     static var model: String { t("模型", "Model") }
     static var recommended: String { t("推荐", "recommended") }
-    static var modelNote: String {
-        t("只提供 Flash-Lite 模型：速度快、成本低。", "Only Flash-Lite models: fast and low cost.")
+    static var modelNote: String { t("仅提供 Flash-Lite 模型，速度快、费用低。", "Flash-Lite models only: fast and low cost.") }
+    static var privacyNote: String {
+        t("润色和翻译时，选中的文字会发送给 Google Gemini。", "When you polish or translate, the selected text is sent to Google Gemini.")
     }
-    static var refresh: String { t("刷新", "Refresh") }
-    static var shortcuts: String { t("快捷键", "Shortcuts") }
-    static var caretToolbar: String { t("选中文字后显示快捷按钮", "Buttons on selected text") }
+
+    static var usageSection: String { t("使用", "Usage") }
+    static var caretToolbar: String { t("选中文字后显示按钮", "Show buttons on selected text") }
     static var caretToolbarNote: String {
-        t("在输入框里选中文字（比如 ⌘A 全选）后，旁边出现「润色」和「AI 翻译为」。拿不到选区位置的 App 不显示，可改用快捷键。",
-          "Select text in a text box (for example with ⌘A) and Polish and Translate appear beside it. Apps that don't report the selection don't show them; use the shortcuts there.")
+        t("在输入框里选中文字（如 ⌘A 全选）后，旁边出现「润色」和「AI 翻译为」。",
+          "Select text in a text box (for example with ⌘A) and Polish and Translate appear beside it.")
     }
+    static var polishShortcut: String { t("润色快捷键", "Polish shortcut") }
+    static var translateShortcut: String { t("AI 翻译快捷键", "Translate shortcut") }
     static var shortcutsNote: String {
-        t("在任意 App 里选中文字后按快捷键，确认后替换原文。",
-          "Select text in any app and press a shortcut; review the result before it replaces the original.")
+        t("在任意 App 选中文字后按快捷键，确认后替换原文。按钮不出现的 App 也能用。",
+          "Select text in any app and press a shortcut, then confirm to replace it. Works even where the buttons don't appear.")
     }
+
     static var permission: String { t("权限", "Permission") }
     static var accessibility: String { t("辅助功能", "Accessibility") }
-    static var granted: String { t("已允许", "Allowed") }
-    static var notGranted: String { t("未允许", "Not allowed") }
-    static var grant: String { t("去允许", "Allow…") }
+    static var granted: String { t("已开启", "On") }
+    static var notGranted: String { t("未开启", "Off") }
+    static var grant: String { t("去开启", "Turn On…") }
     static var accessibilityNote: String {
-        t("在 系统设置 → 隐私与安全性 → 辅助功能 里打开 ZnKeyboard。",
-          "Turn on ZnKeyboard in System Settings → Privacy & Security → Accessibility.")
+        t("用于读取和替换选中的文字。在 系统设置 → 隐私与安全性 → 辅助功能 里打开 ZnKeyboard。",
+          "Needed to read and replace selected text. Turn on ZnKeyboard in System Settings → Privacy & Security → Accessibility.")
     }
+
+    static var generalSection: String { t("通用", "General") }
+    static var uiLanguage: String { t("界面语言", "Language") }
+    static var followSystem: String { t("跟随系统", "System") }
+    static var version: String { t("版本", "Version") }
 }
