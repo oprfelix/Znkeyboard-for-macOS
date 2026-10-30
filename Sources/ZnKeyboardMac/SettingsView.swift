@@ -4,10 +4,12 @@ struct SettingsView: View {
     /// Called when something the menu or window title shows changes here.
     var onChange: () -> Void = {}
 
-    @State private var apiKey = Preferences.apiKey
-    @State private var storedKey = Preferences.apiKey
+    @State private var provider = Preferences.provider
+    @State private var baseURL = Preferences.openAIBaseURL
+    @State private var apiKey = Preferences.apiKey(for: Preferences.provider)
+    @State private var storedKey = Preferences.apiKey(for: Preferences.provider)
     @State private var models: [String] = []
-    @State private var model = Preferences.model
+    @State private var model = Preferences.model(for: Preferences.provider)
     @State private var target = Preferences.translateTarget.code
     @State private var caretToolbar = Preferences.caretToolbar
     @State private var uiLanguage = Preferences.uiLanguage
@@ -17,6 +19,19 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
+                Picker(L.provider, selection: Binding(get: { provider }, set: switchProvider)) {
+                    ForEach(Provider.allCases) { Text($0.displayName).tag($0) }
+                }
+
+                if provider == .openAICompatible {
+                    LabeledContent(L.apiBaseURL) {
+                        TextField(Preferences.defaultOpenAIBaseURL, text: $baseURL)
+                            .labelsHidden()
+                            .onSubmit(saveBaseURL)
+                            .onChange(of: baseURL) { _, _ in saveBaseURL() }
+                    }
+                }
+
                 LabeledContent(L.apiKey) {
                     HStack {
                         SecureField(L.apiKeyPlaceholder, text: $apiKey)
@@ -26,28 +41,46 @@ struct SettingsView: View {
                             .disabled(apiKey.trimmingCharacters(in: .whitespaces) == storedKey)
                     }
                 }
-                if storedKey.isEmpty {
+                if storedKey.isEmpty, provider == .gemini {
                     HStack(spacing: 4) {
                         Text(L.noKeyYet).foregroundStyle(.secondary)
                         Link(L.getKey + " ↗", destination: URL(string: "https://aistudio.google.com/apikey")!)
                     }
                     .font(.caption)
-                } else {
+                } else if !storedKey.isEmpty {
                     Label(L.keyStored, systemImage: "checkmark.circle.fill")
                         .font(.caption)
                         .foregroundStyle(.green)
                 }
 
-                Picker(L.model, selection: $model) {
-                    ForEach(modelOptions, id: \.self) { id in
-                        Text(id == Preferences.defaultModel ? "\(id)（\(L.recommended)）" : id).tag(id)
+                if provider == .gemini {
+                    Picker(L.model, selection: $model) {
+                        ForEach(modelOptions, id: \.self) { id in
+                            Text(id == Preferences.defaultModel ? "\(id)（\(L.recommended)）" : id).tag(id)
+                        }
+                    }
+                    .onChange(of: model) { _, value in Preferences.setModel(value, for: .gemini) }
+                } else {
+                    // Any model ID can be typed; the server's list, once loaded, is a shortcut.
+                    LabeledContent(L.model) {
+                        HStack {
+                            TextField(L.modelIDPlaceholder, text: $model)
+                                .labelsHidden()
+                                .onChange(of: model) { _, value in Preferences.setModel(value, for: .openAICompatible) }
+                            if !models.isEmpty {
+                                Menu(L.chooseModel) {
+                                    ForEach(models, id: \.self) { id in Button(id) { model = id } }
+                                }
+                                .fixedSize()
+                            }
+                        }
                     }
                 }
-                .onChange(of: model) { _, value in Preferences.model = value }
             } header: {
                 Text(L.aiSection)
             } footer: {
-                Text("\(L.modelNote)\(L.isChinese ? "" : " ")\(L.privacyNote)")
+                let note = provider == .gemini ? L.modelNote : L.openAINote
+                Text("\(note)\(L.isChinese ? "" : " ")\(L.privacyNote) \(L.keyPerProvider)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -120,7 +153,7 @@ struct SettingsView: View {
         .fixedSize(horizontal: false, vertical: true)
         .id(uiLanguage) // Rebuild every label in the new language.
         .onReceive(permissionTimer) { _ in trusted = TextBridge.isTrusted }
-        .task { await loadModels() }
+        .task(id: provider) { await loadModels() }
     }
 
     private static var version: String {
@@ -134,19 +167,32 @@ struct SettingsView: View {
         return options
     }
 
+    /// Loads the chosen provider's own key and model into the form.
+    private func switchProvider(_ next: Provider) {
+        Preferences.provider = next
+        provider = next
+        apiKey = Preferences.apiKey(for: next)
+        storedKey = apiKey
+        model = Preferences.model(for: next)
+        models = []
+        onChange()
+    }
+
+    private func saveBaseURL() {
+        Preferences.openAIBaseURL = baseURL
+    }
+
     private func saveKey() {
-        Preferences.apiKey = apiKey
-        apiKey = Preferences.apiKey
+        Preferences.setAPIKey(apiKey, for: provider)
+        apiKey = Preferences.apiKey(for: provider)
         storedKey = apiKey
         Task { await loadModels() }
     }
 
     private func loadModels() async {
-        let key = Preferences.apiKey
-        guard !key.isEmpty else { return }
-        if let loaded = try? await GeminiClient(apiKey: key, model: model).liteModels(), !loaded.isEmpty {
-            models = loaded
-        }
+        guard let client = try? Preferences.client(), !client.apiKey.isEmpty,
+              let loaded = try? await client.models(), !loaded.isEmpty else { return }
+        models = loaded
     }
 }
 

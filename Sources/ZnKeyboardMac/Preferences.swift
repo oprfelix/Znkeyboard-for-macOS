@@ -1,15 +1,36 @@
 import Foundation
 import Security
 
-/// Settings that persist across launches. The API key lives in the Keychain, the rest in UserDefaults.
+/// Where requests go: Google Gemini's built-in endpoint, or any OpenAI-compatible server
+/// (OpenAI, DeepSeek, OpenRouter…). Each keeps its own key and model.
+enum Provider: String, CaseIterable, Identifiable {
+    case gemini
+    case openAICompatible = "openai"
+
+    var id: String { rawValue }
+    var displayName: String { self == .gemini ? "Google Gemini" : L.openAICompatible }
+    fileprivate var keychainAccount: String { self == .gemini ? "gemini-api-key" : "openai-api-key" }
+}
+
+/// Settings that persist across launches. API keys live in the Keychain, the rest in UserDefaults.
 enum Preferences {
     static let defaultModel = "gemini-3.5-flash-lite"
+    static let defaultOpenAIBaseURL = "https://api.openai.com/v1"
+    static let defaultOpenAIModel = "gpt-4o-mini"
+    private static let providerKey = "provider"
     private static let modelKey = "geminiModel"
+    private static let openAIModelKey = "openAIModel"
+    private static let openAIBaseURLKey = "openAIBaseURL"
     private static let targetKey = "translateTarget"
     private static let uiLanguageKey = "uiLanguage"
     private static let caretToolbarKey = "caretToolbar"
 
-    /// The 润色 | AI 翻译 buttons next to the caret. On by default.
+    static var provider: Provider {
+        get { Provider(rawValue: UserDefaults.standard.string(forKey: providerKey) ?? "") ?? .gemini }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: providerKey) }
+    }
+
+    /// The 润色 | AI 翻译 buttons next to selected text. On by default.
     static var caretToolbar: Bool {
         get { UserDefaults.standard.object(forKey: caretToolbarKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: caretToolbarKey) }
@@ -21,13 +42,29 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue, forKey: uiLanguageKey) }
     }
 
-    /// The saved Gemini model, or the default when none is saved or it is not a Lite model.
-    static var model: String {
-        get {
+    /// The model for [provider]. Gemini falls back to the default unless a Lite model is saved.
+    static func model(for provider: Provider) -> String {
+        switch provider {
+        case .gemini:
             let stored = UserDefaults.standard.string(forKey: modelKey) ?? defaultModel
             return GeminiModels.isLite(stored) ? stored : defaultModel
+        case .openAICompatible:
+            let stored = UserDefaults.standard.string(forKey: openAIModelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
+            return stored.isEmpty ? defaultOpenAIModel : stored
         }
-        set { UserDefaults.standard.set(newValue, forKey: modelKey) }
+    }
+
+    static func setModel(_ model: String, for provider: Provider) {
+        UserDefaults.standard.set(model.trimmingCharacters(in: .whitespaces), forKey: provider == .gemini ? modelKey : openAIModelKey)
+    }
+
+    /// Gemini's endpoint is fixed; an OpenAI-compatible one is whatever the user typed.
+    static var openAIBaseURL: String {
+        get {
+            let stored = UserDefaults.standard.string(forKey: openAIBaseURLKey)?.trimmingCharacters(in: .whitespaces) ?? ""
+            return stored.isEmpty ? defaultOpenAIBaseURL : stored
+        }
+        set { UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespaces), forKey: openAIBaseURLKey) }
     }
 
     static var translateTarget: TranslateLanguage {
@@ -35,18 +72,24 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue.code, forKey: targetKey) }
     }
 
-    static var apiKey: String {
-        get { Keychain.read() ?? "" }
-        set { Keychain.write(newValue.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    static func apiKey(for provider: Provider) -> String { Keychain.read(account: provider.keychainAccount) ?? "" }
+
+    static func setAPIKey(_ key: String, for provider: Provider) {
+        Keychain.write(key.trimmingCharacters(in: .whitespacesAndNewlines), account: provider.keychainAccount)
+    }
+
+    /// The client for the selected provider and its key, model and endpoint.
+    static func client() throws -> AIClient {
+        let provider = provider
+        return try AIClient(provider: provider, baseURL: openAIBaseURL, apiKey: apiKey(for: provider), model: model(for: provider))
     }
 }
 
-/// The Gemini API key as a generic password item, readable only by this app.
+/// API keys as generic password items, readable only by this app.
 enum Keychain {
     private static let service = "dev.zain.znkeyboard.mac"
-    private static let account = "gemini-api-key"
 
-    private static var query: [String: Any] {
+    private static func query(_ account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -54,9 +97,9 @@ enum Keychain {
         ]
     }
 
-    static func read() -> String? {
+    static func read(account: String) -> String? {
         var item: CFTypeRef?
-        var search = query
+        var search = query(account)
         search[kSecReturnData as String] = true
         search[kSecMatchLimit as String] = kSecMatchLimitOne
         guard SecItemCopyMatching(search as CFDictionary, &item) == errSecSuccess,
@@ -64,10 +107,10 @@ enum Keychain {
         return String(data: data, encoding: .utf8)
     }
 
-    static func write(_ value: String) {
-        SecItemDelete(query as CFDictionary)
+    static func write(_ value: String, account: String) {
+        SecItemDelete(query(account) as CFDictionary)
         guard !value.isEmpty else { return }
-        var item = query
+        var item = query(account)
         item[kSecValueData as String] = Data(value.utf8)
         item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         SecItemAdd(item as CFDictionary, nil)

@@ -8,6 +8,7 @@ enum RewriteMode {
 
 enum RewriteError: LocalizedError {
     case missingKey
+    case badEndpoint
     case tooLong
     case noChange
     case http(Int, String)
@@ -16,6 +17,7 @@ enum RewriteError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingKey: L.needKey
+        case .badEndpoint: L.badEndpoint
         case .tooLong: L.tooLong
         case .noChange: L.noChange
         case .http(let code, let body):
@@ -25,19 +27,61 @@ enum RewriteError: LocalizedError {
     }
 }
 
-/// Talks to Gemini through its OpenAI-compatible endpoint, with the same prompts and JSON contract
-/// as ZnKeyboard for Android.
-struct GeminiClient {
-    static let baseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai")!
+/// Talks to Gemini's OpenAI-compatible endpoint or any other OpenAI-compatible server, with the
+/// same prompts and JSON contract as ZnKeyboard for Android.
+struct AIClient {
+    static let geminiBaseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai")!
     static let maxSourceCharacters = 5_000
 
+    let provider: Provider
+    let baseURL: URL
     let apiKey: String
     let model: String
+
+    /// [baseURL] is used for OpenAI-compatible servers only; it must be HTTPS.
+    init(provider: Provider, baseURL: String, apiKey: String, model: String) throws {
+        self.provider = provider
+        self.apiKey = apiKey
+        self.model = model
+        if provider == .gemini {
+            self.baseURL = Self.geminiBaseURL
+        } else {
+            let trimmed = baseURL.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            guard let url = URL(string: trimmed), url.scheme == "https", url.host != nil else { throw RewriteError.badEndpoint }
+            self.baseURL = url
+        }
+    }
 
     func rewrite(_ text: String, mode: RewriteMode) async throws -> String {
         guard !apiKey.isEmpty else { throw RewriteError.missingKey }
         guard text.count <= Self.maxSourceCharacters else { throw RewriteError.tooLong }
+        do {
+            return try await request(text, mode: mode, strictSchema: true)
+        } catch RewriteError.http(let code, let body) where [400, 404, 422].contains(code) && Self.mentionsSchema(body) {
+            // Some servers (DeepSeek, older OpenAI-compatible ones) only take plain JSON mode.
+            return try await request(text, mode: mode, strictSchema: false)
+        }
+    }
 
+    private func request(_ text: String, mode: RewriteMode, strictSchema: Bool) async throws -> String {
+        let format: [String: Any] = strictSchema ? [
+            "type": "json_schema",
+            "json_schema": [
+                "name": "znkeyboard_rewrite_response",
+                "strict": true,
+                "schema": [
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": [
+                        "text": [
+                            "type": "string",
+                            "description": "The final rewritten text only, without labels, explanations, or prefaces.",
+                        ],
+                    ],
+                    "required": ["text"],
+                ],
+            ],
+        ] : ["type": "json_object"]
         let body: [String: Any] = [
             "model": model,
             "messages": [
@@ -46,27 +90,10 @@ struct GeminiClient {
             ],
             "temperature": 0.4,
             "max_tokens": Self.maxTokens(for: text),
-            "response_format": [
-                "type": "json_schema",
-                "json_schema": [
-                    "name": "znkeyboard_rewrite_response",
-                    "strict": true,
-                    "schema": [
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": [
-                            "text": [
-                                "type": "string",
-                                "description": "The final rewritten text only, without labels, explanations, or prefaces.",
-                            ],
-                        ],
-                        "required": ["text"],
-                    ],
-                ],
-            ],
+            "response_format": format,
         ]
 
-        var request = URLRequest(url: Self.baseURL.appendingPathComponent("chat/completions"))
+        var request = URLRequest(url: baseURL.appendingPathComponent("chat/completions"))
         request.httpMethod = "POST"
         request.timeoutInterval = 30
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -91,10 +118,15 @@ struct GeminiClient {
         return result
     }
 
-    /// Lite models this key can use, newest first.
-    func liteModels() async throws -> [String] {
+    private static func mentionsSchema(_ body: String) -> Bool {
+        let lower = body.lowercased()
+        return ["response_format", "json_schema", "schema"].contains { lower.contains($0) }
+    }
+
+    /// Models this key can use: Flash-Lite only for Gemini, everything the server lists otherwise.
+    func models() async throws -> [String] {
         guard !apiKey.isEmpty else { throw RewriteError.missingKey }
-        var request = URLRequest(url: Self.baseURL.appendingPathComponent("models"))
+        var request = URLRequest(url: baseURL.appendingPathComponent("models"))
         request.timeoutInterval = 15
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -104,7 +136,7 @@ struct GeminiClient {
         }
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let ids = (json?["data"] as? [[String: Any]])?.compactMap { $0["id"] as? String } ?? []
-        return GeminiModels.liteModels(from: ids)
+        return provider == .gemini ? GeminiModels.liteModels(from: ids) : Array(Set(ids)).sorted()
     }
 
     /// A CJK character can cost a whole token while Latin text packs about three characters per

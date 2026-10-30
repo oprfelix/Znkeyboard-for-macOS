@@ -42,8 +42,15 @@ final class Controller {
             panel.showError(L.needAccessibility, offerSettings: true)
             return
         }
-        let apiKey = Preferences.apiKey
-        guard !apiKey.isEmpty else {
+        let client: AIClient
+        do {
+            client = try Preferences.client()
+        } catch {
+            showPanel()
+            panel.showError(L.badEndpoint, offerSettings: true)
+            return
+        }
+        guard !client.apiKey.isEmpty else {
             showPanel()
             panel.showError(L.needKey, offerSettings: true)
             return
@@ -62,7 +69,7 @@ final class Controller {
             }
             let (leading, core, trailing) = Self.splitWhitespace(selection)
             do {
-                let result = try await GeminiClient(apiKey: apiKey, model: Preferences.model).rewrite(core, mode: mode)
+                let result = try await client.rewrite(core, mode: mode)
                 guard current == generation, panel.isVisible else { return }
                 // Keep the selection's surrounding spaces and line breaks so the paste fits back in.
                 panel.showResult(leading + result + trailing)
@@ -70,7 +77,12 @@ final class Controller {
                 guard current == generation, panel.isVisible else { return }
                 let message = (error as? RewriteError)?.errorDescription
                     ?? ((error as? URLError) != nil ? L.networkFailed : error.localizedDescription)
-                panel.showError(message, offerSettings: (error as? RewriteError).map { if case .missingKey = $0 { true } else { false } } ?? false)
+                // Key, model or endpoint problems are fixed in Settings.
+                let fixableInSettings: Bool = switch error as? RewriteError {
+                case .missingKey, .badEndpoint, .http(400, _), .http(401, _), .http(403, _), .http(404, _): true
+                default: false
+                }
+                panel.showError(message, offerSettings: fixableInSettings)
             }
         }
     }

@@ -46,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         caretToolbar.start()
 
         // First run: nothing works without a key, so start where it goes.
-        if Preferences.apiKey.isEmpty { showSettings() }
+        if Preferences.apiKey(for: Preferences.provider).isEmpty { showSettings() }
     }
 
     /// Rebuilt on every open so the translate item names the current language.
