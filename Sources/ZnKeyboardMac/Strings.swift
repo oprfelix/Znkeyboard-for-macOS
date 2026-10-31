@@ -54,7 +54,7 @@ enum L {
     static var apiKey: String { t("API Key", "API key") }
     static var apiKeyPlaceholder: String { t("输入 API Key", "Enter your API key") }
     static var deepSeekNote: String {
-        t("国内可直连，固定使用 deepseek-chat 模型。", "Fast in mainland China; always uses the deepseek-chat model.")
+        t("国内可直连，固定使用 deepseek-flash 模型。", "Fast in mainland China; always uses the deepseek-flash model.")
     }
     static var getDeepSeekKey: String { t("在 DeepSeek 开放平台获取", "Get one on the DeepSeek platform") }
     static var save: String { t("保存", "Save") }

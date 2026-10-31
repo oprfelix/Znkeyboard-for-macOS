@@ -66,7 +66,7 @@ struct AIClient {
                 ],
             ],
         ] : ["type": "json_object"]
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "messages": [
                 ["role": "system", "content": Prompts.system(for: mode)],
@@ -76,6 +76,8 @@ struct AIClient {
             "max_tokens": Self.maxTokens(for: text),
             "response_format": format,
         ]
+        // DeepSeek thinks by default, which only slows a rewrite down.
+        if provider == .deepseek { body["thinking"] = ["type": "disabled"] }
 
         var request = URLRequest(url: baseURL.appendingPathComponent("chat/completions"))
         request.httpMethod = "POST"

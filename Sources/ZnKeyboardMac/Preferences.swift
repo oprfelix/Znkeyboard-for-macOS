@@ -18,7 +18,7 @@ enum Provider: String, CaseIterable, Identifiable {
 /// Settings that persist across launches. API keys live in the Keychain, the rest in UserDefaults.
 enum Preferences {
     static let defaultModel = "gemini-3.5-flash-lite"
-    static let deepSeekModel = "deepseek-chat"
+    static let deepSeekModel = "deepseek-flash"
     private static let providerKey = "provider"
     private static let modelKey = "geminiModel"
     private static let targetKey = "translateTarget"
@@ -43,7 +43,7 @@ enum Preferences {
     }
 
     /// The model for [provider]. Gemini falls back to the default unless a Lite model is saved;
-    /// DeepSeek always uses deepseek-chat.
+    /// DeepSeek always uses deepseek-flash.
     static func model(for provider: Provider) -> String {
         switch provider {
         case .gemini:
