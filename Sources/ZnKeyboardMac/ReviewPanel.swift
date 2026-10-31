@@ -17,6 +17,8 @@ final class ReviewModel: ObservableObject {
     @Published var shown = false
     /// Whether there is a request to run again (not when the selection couldn't be read).
     @Published var canRetry = false
+    /// The error's button: 打开设置, or 去授权 when it opens System Settings instead.
+    @Published var settingsTitle = L.openSettings
     var onReplace: (String) -> Void = { _ in }
     var onClose: () -> Void = {}
     var onOpenSettings: () -> Void = {}
@@ -96,8 +98,9 @@ final class ReviewPanelController {
         }
     }
 
-    func showError(_ message: String, offerSettings: Bool = false, canRetry: Bool = false) {
+    func showError(_ message: String, offerSettings: Bool = false, canRetry: Bool = false, settingsTitle: String = L.openSettings) {
         model.canRetry = canRetry
+        model.settingsTitle = settingsTitle
         animateResize { $0.state = .error(message, offerSettings: offerSettings) }
     }
 
@@ -228,7 +231,7 @@ private struct ReviewView: View {
                         Button(action: model.onRetry) { Label(L.retry, systemImage: "arrow.clockwise") }
                     }
                     if offerSettings {
-                        Button(L.openSettings, action: model.onOpenSettings)
+                        Button(model.settingsTitle, action: model.onOpenSettings)
                             .buttonStyle(.borderedProminent)
                     }
                 }

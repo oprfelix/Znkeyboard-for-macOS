@@ -43,10 +43,11 @@ enum L {
     static var noTextFound: String { t("截图里没有识别到文字。", "No text found in the screenshot.") }
     static var ocrFailed: String { t("识别文字失败，请再试一次。", "Couldn't read the text. Try again.") }
     static var screenRecording: String { t("屏幕录制", "Screen Recording") }
-    static var screenRecordingNote: String { t("截图翻译需要这项权限。开启后请退出并重新打开 ZnKeyboard。", "Screenshot translation needs this. After turning it on, quit and reopen ZnKeyboard.") }
+    static var screenRecordingNote: String { t("只在截图翻译时使用，截图在本机识别。开启后需要重新打开 ZnKeyboard。", "Only for screenshot translate; the screenshot is read on this Mac. Reopen ZnKeyboard after turning it on.") }
+    static var relaunch: String { t("重新打开 ZnKeyboard", "Reopen ZnKeyboard") }
     static var needScreenRecording: String {
-        t("截图翻译需要「屏幕录制」权限。请在系统设置里打开 ZnKeyboard，然后退出并重新打开 ZnKeyboard。",
-          "Screenshot translation needs Screen Recording access. Turn on ZnKeyboard in System Settings, then quit and reopen ZnKeyboard.")
+        t("截图翻译需要「屏幕录制」权限。点「去授权」打开 ZnKeyboard 的开关，然后在设置的「权限」页点「重新打开 ZnKeyboard」。",
+          "Screenshot translation needs Screen Recording access. Click Grant Access, turn on ZnKeyboard, then click Reopen ZnKeyboard on the Permission page in Settings.")
     }
     static var retry: String { t("重试", "Try Again") }
     static var regenerate: String { t("重新生成", "Regenerate") }
@@ -82,7 +83,7 @@ enum L {
     }
     static var networkFailed: String { t("无法连接 AI 服务，请检查网络和 API 地址。", "Couldn't reach the AI service. Check your connection and API address.") }
     static var needAccessibility: String {
-        t("需要「辅助功能」权限才能读取和替换选中的文字。", "ZnKeyboard needs Accessibility access to read and replace selected text.")
+        t("需要「辅助功能」权限才能读取和替换选中的文字。点「去授权」，在列表里打开 ZnKeyboard 的开关即可。", "ZnKeyboard needs Accessibility access to read and replace selected text. Click Grant Access and turn on ZnKeyboard.")
     }
 
     // Settings
@@ -153,10 +154,11 @@ enum L {
     static var accessibility: String { t("辅助功能", "Accessibility") }
     static var granted: String { t("已开启", "On") }
     static var notGranted: String { t("未开启", "Off") }
-    static var grant: String { t("去开启", "Turn On…") }
+    static var grant: String { t("去授权", "Grant Access…") }
     static var accessibilityNote: String {
-        t("用于读取和替换选中的文字。", "Needed to read and replace the text you select.")
+        t("用来读取和替换你选中的文字，润色和翻译都需要。", "Reads and replaces the text you select; Polish and Translate need it.")
     }
+    static var needAccessibilityMenu: String { t("需要开启辅助功能权限…", "Accessibility Access Needed…") }
 
     static var generalSection: String { t("通用", "General") }
     static var uiLanguage: String { t("界面语言", "Language") }

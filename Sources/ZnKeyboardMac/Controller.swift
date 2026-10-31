@@ -41,9 +41,15 @@ final class Controller {
         let showPanel = { [weak self] in self?.panel.show(mode: mode, actions: actions) }
 
         guard TextBridge.isTrusted else {
-            TextBridge.requestTrust()
-            showPanel()
-            panel.showError(L.needAccessibility, offerSettings: true)
+            // The button goes straight to System Settings → Accessibility, where ZnKeyboard is listed.
+            var grant = actions
+            grant.openSettings = { [weak self] in
+                self?.panel.close()
+                TextBridge.requestTrust()
+                TextBridge.openAccessibilitySettings()
+            }
+            panel.show(mode: mode, actions: grant)
+            panel.showError(L.needAccessibility, offerSettings: true, settingsTitle: L.grant)
             return
         }
         let client: AIClient
@@ -102,7 +108,7 @@ final class Controller {
         guard ScreenText.hasPermission else {
             ScreenText.requestPermission()
             panel.show(mode: .read(target), actions: actions)
-            panel.showError(L.needScreenRecording, offerSettings: true)
+            panel.showError(L.needScreenRecording, offerSettings: true, settingsTitle: L.grant)
             return
         }
         // Key and address problems are fixed in ZnKeyboard's own settings, before any dragging.

@@ -44,9 +44,9 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: providerKey) }
     }
 
-    /// The 润色 | AI 翻译 buttons next to selected text. On by default.
+    /// The 润色 | AI 翻译 buttons next to selected text. Off by default; the shortcuts work without it.
     static var caretToolbar: Bool {
-        get { UserDefaults.standard.object(forKey: caretToolbarKey) as? Bool ?? true }
+        get { UserDefaults.standard.object(forKey: caretToolbarKey) as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: caretToolbarKey) }
     }
 

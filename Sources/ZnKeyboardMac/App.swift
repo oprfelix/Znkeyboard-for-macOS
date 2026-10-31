@@ -44,8 +44,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         caretToolbar.onTranslate = { [weak self] in self?.controller.run(.translate(Preferences.translateTarget)) }
         caretToolbar.start()
 
-        // First run: nothing works without a key, so start where it goes.
-        if Preferences.apiKey(for: Preferences.provider).isEmpty { showSettings() }
+        // First run: nothing works without a key and Accessibility, so start where they're set.
+        if Preferences.apiKey(for: Preferences.provider).isEmpty || !TextBridge.isTrusted { showSettings() }
     }
 
     @discardableResult
@@ -75,6 +75,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// Rebuilt on every open so the translate item names the current language.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+
+        if !TextBridge.isTrusted {
+            let grant = NSMenuItem(title: L.needAccessibilityMenu, action: #selector(grantAccessibility), keyEquivalent: "")
+            grant.image = Self.symbol("exclamationmark.triangle.fill")
+            menu.addItem(grant)
+            menu.addItem(.separator())
+        }
 
         let polish = NSMenuItem(title: L.polishSelection, action: #selector(polish), keyEquivalent: "")
         polish.image = Self.symbol("sparkles")
@@ -146,6 +153,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     @objc private func openSettings() { showSettings() }
 
+    @objc private func grantAccessibility() {
+        TextBridge.requestTrust()
+        TextBridge.openAccessibilitySettings()
+    }
+
     private static func symbol(_ name: String) -> NSImage? {
         NSImage(systemSymbolName: name, accessibilityDescription: nil)
     }
@@ -198,6 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             NSApp.activate(ignoringOtherApps: true)
             self?.settingsWindow?.makeKeyAndOrderFront(nil)
             self?.settingsWindow?.orderFrontRegardless()
+            NotificationCenter.default.post(name: .settingsShown, object: nil)
         }
     }
 

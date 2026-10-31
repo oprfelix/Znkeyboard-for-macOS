@@ -22,12 +22,22 @@ struct SettingsView: View {
     @State private var screenTrusted = ScreenText.hasPermission
     @State private var screenshotTarget = Preferences.screenshotTarget.code
     @State private var page: SettingsPage? = .ai
+    @FocusState private var keyFocused: Bool
+    /// Set once Screen Recording was asked for here, so the relaunch it needs can be offered.
+    @State private var askedForScreen = false
     private let permissionTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         NavigationSplitView {
             List(SettingsPage.allCases, selection: $page) { page in
-                Label(page.title, systemImage: page.icon).tag(page)
+                HStack {
+                    Label(page.title, systemImage: page.icon)
+                    if page == .ai && needsKey || page == .permission && !trusted {
+                        Spacer()
+                        Circle().fill(.orange).frame(width: 7, height: 7)
+                    }
+                }
+                .tag(page)
             }
             .navigationSplitViewColumnWidth(170)
             .toolbar(removing: .sidebarToggle)
@@ -45,6 +55,14 @@ struct SettingsView: View {
         }
         .frame(width: 680, height: 460)
         .id(uiLanguage) // Rebuild every label in the new language.
+        .onReceive(NotificationCenter.default.publisher(for: .settingsShown)) { _ in focusForKeyState() }
+        .onChange(of: keyCheck) { _, check in
+            switch check {
+            case .works: releaseFocus()
+            case .rejected, .unverified: keyFocused = true
+            case .idle, .checking: break
+            }
+        }
         .onReceive(permissionTimer) { _ in
             trusted = TextBridge.isTrusted
             screenTrusted = ScreenText.hasPermission
@@ -82,7 +100,17 @@ struct SettingsView: View {
                 LabeledContent(L.apiKey) {
                     SecureField(L.apiKeyPlaceholder, text: $apiKey)
                         .labelsHidden()
+                        .focused($keyFocused)
                         .onSubmit(saveKey)
+                        .overlay {
+                            // Lit while the key is missing (accent) or doesn't work (red).
+                            if let color = keyHighlight {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .strokeBorder(color, lineWidth: 1.5)
+                                    .padding(-4)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                 }
                 .task(id: apiKey) {
                     guard apiKey.trimmingCharacters(in: .whitespacesAndNewlines) != storedKey else { return }
@@ -198,44 +226,56 @@ struct SettingsView: View {
     private var permissionPage: some View {
         Form {
             Section {
-                LabeledContent(L.accessibility) {
+                // The timer below turns a row green within a second of the switch going on.
+                LabeledContent {
+                    permissionStatus(trusted) {
+                        TextBridge.requestTrust()
+                        TextBridge.openAccessibilitySettings()
+                    }
+                } label: {
+                    Text(L.accessibility)
+                    Text(L.accessibilityNote)
+                }
+                LabeledContent {
                     HStack(spacing: 8) {
-                        Label(trusted ? L.granted : L.notGranted, systemImage: trusted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                            .foregroundStyle(trusted ? .green : .orange)
-                        if !trusted {
-                            Button(L.grant) {
-                                TextBridge.requestTrust()
-                                TextBridge.openAccessibilitySettings()
-                            }
+                        // macOS applies Screen Recording only to a fresh launch.
+                        if !screenTrusted, askedForScreen {
+                            Button(L.relaunch, action: Self.relaunch).buttonStyle(.borderedProminent)
+                        }
+                        permissionStatus(screenTrusted) {
+                            askedForScreen = true
+                            ScreenText.requestPermission()
+                            ScreenText.openPermissionSettings()
                         }
                     }
+                } label: {
+                    Text(L.screenRecording)
+                    Text(L.screenRecordingNote)
                 }
-                LabeledContent(L.screenRecording) {
-                    HStack(spacing: 8) {
-                        Label(screenTrusted ? L.granted : L.notGranted, systemImage: screenTrusted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                            .foregroundStyle(screenTrusted ? .green : .orange)
-                        if !screenTrusted {
-                            Button(L.grant) {
-                                ScreenText.requestPermission()
-                                ScreenText.openPermissionSettings()
-                            }
-                        }
-                    }
-                }
-            } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    if !trusted {
-                        Text(L.accessibilityNote)
-                    }
-                    if !screenTrusted {
-                        Text(L.screenRecordingNote)
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// 已开启 in green, or 未开启 with the button that opens the right pane of System Settings.
+    private func permissionStatus(_ on: Bool, grant: @escaping () -> Void) -> some View {
+        HStack(spacing: 8) {
+            Label(on ? L.granted : L.notGranted, systemImage: on ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                .foregroundStyle(on ? .green : .orange)
+            if !on {
+                Button(L.grant, action: grant)
+            }
+        }
+    }
+
+    /// Starts a new copy once this one has quit.
+    private static func relaunch() {
+        let path = Bundle.main.bundlePath.replacingOccurrences(of: "'", with: "'\\''")
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "sleep 1; open '\(path)'"]
+        try? task.run()
+        NSApp.terminate(nil)
     }
 
     private var generalPage: some View {
@@ -265,6 +305,38 @@ struct SettingsView: View {
         .formStyle(.grouped)
     }
 
+    /// No key yet, or the saved one failed its check.
+    private var needsKey: Bool {
+        if storedKey.isEmpty { return true }
+        switch keyCheck {
+        case .rejected, .unverified: return true
+        default: return false
+        }
+    }
+
+    private var keyHighlight: Color? {
+        storedKey.isEmpty ? .accentColor : needsKey ? .red : nil
+    }
+
+    /// Without a working key, the key field is where to start; with one, nothing takes the caret
+    /// (AppKit would otherwise put it in the first field).
+    /// Also opens on Permission when the key is fine but Accessibility is still off.
+    private func focusForKeyState() {
+        trusted = TextBridge.isTrusted
+        if needsKey {
+            page = .ai
+            DispatchQueue.main.async { keyFocused = true }
+        } else {
+            if !trusted { page = .permission }
+            releaseFocus()
+        }
+    }
+
+    private func releaseFocus() {
+        keyFocused = false
+        DispatchQueue.main.async { NSApp.keyWindow?.makeFirstResponder(nil) }
+    }
+
     private static var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
     }
@@ -284,6 +356,8 @@ struct SettingsView: View {
         storedKey = apiKey
         model = Preferences.model(for: next)
         models = []
+        keyCheck = .idle
+        if apiKey.isEmpty { keyFocused = true } else { releaseFocus() }
         onChange()
     }
 
@@ -395,4 +469,9 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
         case .general: "gearshape"
         }
     }
+}
+
+extension Notification.Name {
+    /// Posted each time the settings window is brought to the front.
+    static let settingsShown = Notification.Name("ZnKeyboardSettingsShown")
 }
