@@ -148,7 +148,24 @@ private struct ReviewView: View {
         }
         .padding(16)
         .frame(width: 440, alignment: .leading)
+        // Blank parts of the card drag the panel; buttons and the selectable text keep their clicks.
+        .background(WindowDragArea())
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.separator))
+    }
+}
+
+/// Moves its window when dragged. `isMovableByWindowBackground` alone doesn't reach through the
+/// SwiftUI hosting view on newer macOS releases, so the drag is started explicitly.
+private struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragView: NSView {
+        override var mouseDownCanMoveWindow: Bool { true }
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
     }
 }
