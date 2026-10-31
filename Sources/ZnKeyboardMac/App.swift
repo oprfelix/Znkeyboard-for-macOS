@@ -175,20 +175,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func showSettings() {
         if settingsWindow == nil {
             let hosting = NSHostingController(rootView: SettingsView(
-                onChange: { [weak self] in self?.settingsWindow?.title = L.settingsTitle },
+                // The window title is the open page's name, set by SettingsView.
+                onChange: {},
                 applyShortcut: { [weak self] action, shortcut in self?.applyShortcut(action, shortcut) ?? .taken }
             ))
-            // The window follows the form's height as notes appear and disappear.
             hosting.sizingOptions = .preferredContentSize
             let window = NSWindow(contentViewController: hosting)
             window.title = L.settingsTitle
-            window.styleMask = [.titled, .closable]
+            // The sidebar runs up under the title bar, as in System Settings; the page title shows in the toolbar.
+            window.styleMask = [.titled, .closable, .fullSizeContentView]
+            window.toolbarStyle = .unified
             window.isReleasedWhenClosed = false
             window.delegate = self
             window.center()
             settingsWindow = window
         }
-        settingsWindow?.title = L.settingsTitle
         // A menu-bar-only app is often refused activation, leaving the window behind others. Being a
         // regular app (with a Dock icon) while settings are open brings it to the front reliably.
         NSApp.setActivationPolicy(.regular)

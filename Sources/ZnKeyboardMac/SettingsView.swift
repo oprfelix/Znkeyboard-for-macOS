@@ -21,9 +21,42 @@ struct SettingsView: View {
     @State private var trusted = TextBridge.isTrusted
     @State private var screenTrusted = ScreenText.hasPermission
     @State private var screenshotTarget = Preferences.screenshotTarget.code
+    @State private var page: SettingsPage? = .ai
     private let permissionTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
+        NavigationSplitView {
+            List(SettingsPage.allCases, selection: $page) { page in
+                Label(page.title, systemImage: page.icon).tag(page)
+            }
+            .navigationSplitViewColumnWidth(170)
+            .toolbar(removing: .sidebarToggle)
+        } detail: {
+            Group {
+                switch page ?? .ai {
+                case .ai: aiPage
+                case .usage: usagePage
+                case .shortcuts: shortcutsPage
+                case .permission: permissionPage
+                case .general: generalPage
+                }
+            }
+            .navigationTitle((page ?? .ai).title)
+        }
+        .frame(width: 680, height: 460)
+        .id(uiLanguage) // Rebuild every label in the new language.
+        .onReceive(permissionTimer) { _ in
+            trusted = TextBridge.isTrusted
+            screenTrusted = ScreenText.hasPermission
+        }
+        .task(id: "\(provider.rawValue)|\(preset.rawValue)|\(baseURL)") {
+            // A typed address settles before it is checked.
+            if provider == .openAICompatible, preset == .custom { try? await Task.sleep(for: .milliseconds(600)) }
+            if !Task.isCancelled { await loadModels() }
+        }
+    }
+
+    private var aiPage: some View {
         Form {
             Section {
                 Picker(L.provider, selection: Binding(get: { provider }, set: switchProvider)) {
@@ -100,14 +133,17 @@ struct SettingsView: View {
                         }
                     }
                 }
-            } header: {
-                Text(L.aiSection)
             } footer: {
                 Text(provider == .gemini ? L.modelNote : preset == .deepseek ? L.deepSeekNote : L.openAINote)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+        .formStyle(.grouped)
+    }
 
+    private var usagePage: some View {
+        Form {
             Section {
                 Picker(L.translateMenu, selection: $target) {
                     ForEach(Languages.all) { language in
@@ -141,20 +177,26 @@ struct SettingsView: View {
                     Text(L.caretToolbarNote).font(.caption).foregroundStyle(.secondary)
                 }
 
-            } header: {
-                Text(L.usageSection)
             }
+        }
+        .formStyle(.grouped)
+    }
 
+    private var shortcutsPage: some View {
+        Form {
             Section {
                 LabeledContent(L.polishShortcut) { ShortcutRecorder(action: .polish, apply: applyShortcut) }
                 LabeledContent(L.translateShortcut) { ShortcutRecorder(action: .translate, apply: applyShortcut) }
                 LabeledContent(L.screenshotShortcut) { ShortcutRecorder(action: .screenshot, apply: applyShortcut) }
-            } header: {
-                Text(L.shortcutsSection)
             } footer: {
                 Text(L.shortcutsNote).font(.caption).foregroundStyle(.secondary)
             }
+        }
+        .formStyle(.grouped)
+    }
 
+    private var permissionPage: some View {
+        Form {
             Section {
                 LabeledContent(L.accessibility) {
                     HStack(spacing: 8) {
@@ -180,8 +222,6 @@ struct SettingsView: View {
                         }
                     }
                 }
-            } header: {
-                Text(L.permission)
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
                     if !trusted {
@@ -194,8 +234,13 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+        }
+        .formStyle(.grouped)
+    }
 
-            Section(L.generalSection) {
+    private var generalPage: some View {
+        Form {
+            Section {
                 // Saved before the state changes, so this redraw already uses the new language.
                 Picker(L.uiLanguage, selection: Binding(
                     get: { uiLanguage },
@@ -218,18 +263,6 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500)
-        .fixedSize(horizontal: false, vertical: true)
-        .id(uiLanguage) // Rebuild every label in the new language.
-        .onReceive(permissionTimer) { _ in
-            trusted = TextBridge.isTrusted
-            screenTrusted = ScreenText.hasPermission
-        }
-        .task(id: "\(provider.rawValue)|\(preset.rawValue)|\(baseURL)") {
-            // A typed address settles before it is checked.
-            if provider == .openAICompatible, preset == .custom { try? await Task.sleep(for: .milliseconds(600)) }
-            if !Task.isCancelled { await loadModels() }
-        }
     }
 
     private static var version: String {
@@ -335,4 +368,31 @@ struct SettingsView: View {
 private enum KeyCheck: Equatable {
     case idle, checking, works, rejected
     case unverified(String)
+}
+
+/// The settings window's sidebar, like System Settings (and the Windows version).
+private enum SettingsPage: String, CaseIterable, Identifiable {
+    case ai, usage, shortcuts, permission, general
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .ai: L.aiSection
+        case .usage: L.usageSection
+        case .shortcuts: L.shortcutsSection
+        case .permission: L.permission
+        case .general: L.generalSection
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .ai: "sparkles"
+        case .usage: "text.cursor"
+        case .shortcuts: "keyboard"
+        case .permission: "lock.shield"
+        case .general: "gearshape"
+        }
+    }
 }
