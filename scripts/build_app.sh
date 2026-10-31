@@ -12,7 +12,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="0.2.7"
+VERSION="0.2.8"
 BUILD="9"
 APP="build/ZnKeyboard.app"
 

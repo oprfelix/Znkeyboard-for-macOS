@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var model = Preferences.model(for: Preferences.provider)
     @State private var target = Preferences.translateTarget.code
     @State private var caretToolbar = Preferences.caretToolbar
+    @State private var clickOutsideCloses = Preferences.screenshotClickOutsideCloses
     @State private var uiLanguage = Preferences.uiLanguage
     @State private var trusted = TextBridge.isTrusted
     @State private var screenTrusted = ScreenText.hasPermission
@@ -126,6 +127,12 @@ struct SettingsView: View {
                     }
                     .onChange(of: screenshotTarget) { _, code in Preferences.screenshotTarget = Languages.language(code: code) }
                     Text(L.screenshotTargetNote).font(.caption).foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(L.clickOutsideCloses, isOn: $clickOutsideCloses)
+                        .onChange(of: clickOutsideCloses) { _, value in Preferences.screenshotClickOutsideCloses = value }
+                    Text(L.clickOutsideClosesNote).font(.caption).foregroundStyle(.secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {

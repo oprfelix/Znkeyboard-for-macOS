@@ -30,6 +30,8 @@ final class ReviewPanelController {
     private let model = ReviewModel()
     /// Set while a fade-out runs; a show in the meantime cancels the pending orderOut.
     private var closing: UUID?
+    /// Watches clicks in other apps while a screenshot translation is shown.
+    private var outsideClickMonitor: Any?
     private lazy var panel: NSPanel = {
         let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: 440, height: 160),
@@ -73,6 +75,7 @@ final class ReviewPanelController {
         model.shown = false
         place()
         panel.makeKeyAndOrderFront(nil)
+        watchOutsideClicks(mode: mode)
         DispatchQueue.main.async { [model] in
             withAnimation(.spring(duration: 0.28, bounce: 0.18)) { model.shown = true }
         }
@@ -100,6 +103,7 @@ final class ReviewPanelController {
 
     /// Fades out; [animated] false hides at once, before focus goes back to the source app.
     func close(animated: Bool = true) {
+        stopWatchingOutsideClicks()
         guard panel.isVisible else { return }
         guard animated else {
             closing = nil
@@ -121,6 +125,25 @@ final class ReviewPanelController {
     }
 
     var isVisible: Bool { panel.isVisible && closing == nil }
+
+    /// Screenshot translation is only read, so a click anywhere else dismisses it (when the setting
+    /// is on). A global monitor only sees clicks that go to other apps, so clicks on the card, and
+    /// on its language menu, never count; neither do clicks while the text is still being read.
+    private func watchOutsideClicks(mode: RewriteMode) {
+        stopWatchingOutsideClicks()
+        guard case .read = mode, Preferences.screenshotClickOutsideCloses else { return }
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.isVisible, self.model.state != .loading else { return }
+                self.model.onClose()
+            }
+        }
+    }
+
+    private func stopWatchingOutsideClicks() {
+        if let monitor = outsideClickMonitor { NSEvent.removeMonitor(monitor) }
+        outsideClickMonitor = nil
+    }
 
     /// Top-left corner just below and right of the pointer, kept on screen.
     private func place() {

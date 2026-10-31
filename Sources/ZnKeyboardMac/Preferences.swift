@@ -37,6 +37,7 @@ enum Preferences {
     private static let targetKey = "translateTarget"
     private static let uiLanguageKey = "uiLanguage"
     private static let caretToolbarKey = "caretToolbar"
+    private static let clickOutsideKey = "screenshotClickOutsideCloses"
 
     static var provider: Provider {
         get { Provider(rawValue: UserDefaults.standard.string(forKey: providerKey) ?? "") ?? .gemini }
@@ -47,6 +48,12 @@ enum Preferences {
     static var caretToolbar: Bool {
         get { UserDefaults.standard.object(forKey: caretToolbarKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: caretToolbarKey) }
+    }
+
+    /// Clicking anywhere outside the screenshot translation card closes it. On by default.
+    static var screenshotClickOutsideCloses: Bool {
+        get { UserDefaults.standard.object(forKey: clickOutsideKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: clickOutsideKey) }
     }
 
     /// "system", "zh" or "en".

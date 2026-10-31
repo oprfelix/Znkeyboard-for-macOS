@@ -129,6 +129,11 @@ enum L {
         t("用鼠标拖选或按 ⌘A 全选后，旁边会出现「润色」和「AI 翻译为」按钮。",
           "Drag over text or press ⌘A, and Polish and Translate buttons appear beside it.")
     }
+    static var clickOutsideCloses: String { t("点击空白处关闭截图翻译", "Click outside to close screenshot translation") }
+    static var clickOutsideClosesNote: String {
+        t("截图翻译的结果卡片显示后，点击卡片以外的任意位置即可关闭，不用点 ✕。",
+          "Click anywhere outside the screenshot translation card to close it, instead of clicking ✕.")
+    }
     static var shortcutsSection: String { t("快捷键", "Shortcuts") }
     static var polishShortcut: String { t("润色", "Polish") }
     static var translateShortcut: String { t("AI 翻译", "Translate") }
