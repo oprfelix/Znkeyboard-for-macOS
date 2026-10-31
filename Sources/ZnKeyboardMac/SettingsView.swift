@@ -7,6 +7,8 @@ struct SettingsView: View {
     var applyShortcut: (ShortcutAction, Shortcut?) -> ShortcutResult = { _, shortcut in .ok(shortcut ?? .init(keyCode: 0, modifiers: 0, key: "")) }
 
     @State private var provider = Preferences.provider
+    @State private var preset = Preferences.apiPreset
+    @State private var baseURL = Preferences.openAIBaseURL
     @State private var apiKey = Preferences.apiKey(for: Preferences.provider)
     @State private var storedKey = Preferences.apiKey(for: Preferences.provider)
     @State private var models: [String] = []
@@ -24,6 +26,21 @@ struct SettingsView: View {
                     ForEach(Provider.allCases) { Text($0.displayName).tag($0) }
                 }
 
+                if provider == .openAICompatible {
+                    Picker(L.apiPreset, selection: Binding(get: { preset }, set: switchPreset)) {
+                        ForEach(APIPreset.allCases) { Text($0.displayName).tag($0) }
+                    }
+                }
+
+                if provider == .openAICompatible, preset == .custom {
+                    LabeledContent(L.apiBaseURL) {
+                        TextField(Preferences.defaultOpenAIBaseURL, text: $baseURL)
+                            .labelsHidden()
+                            .onSubmit(saveBaseURL)
+                            .onChange(of: baseURL) { _, _ in saveBaseURL() }
+                    }
+                }
+
                 LabeledContent(L.apiKey) {
                     HStack {
                         SecureField(L.apiKeyPlaceholder, text: $apiKey)
@@ -33,14 +50,10 @@ struct SettingsView: View {
                             .disabled(apiKey.trimmingCharacters(in: .whitespaces) == storedKey)
                     }
                 }
-                if storedKey.isEmpty {
+                if storedKey.isEmpty, provider == .gemini {
                     HStack(spacing: 4) {
                         Text(L.noKeyYet).foregroundStyle(.secondary)
-                        if provider == .gemini {
-                            Link(L.getKey + " ↗", destination: URL(string: "https://aistudio.google.com/apikey")!)
-                        } else {
-                            Link(L.getDeepSeekKey + " ↗", destination: URL(string: "https://platform.deepseek.com/api_keys")!)
-                        }
+                        Link(L.getKey + " ↗", destination: URL(string: "https://aistudio.google.com/apikey")!)
                     }
                     .font(.caption)
                 } else if !storedKey.isEmpty {
@@ -55,14 +68,27 @@ struct SettingsView: View {
                             Text(id == Preferences.defaultModel ? "\(id)（\(L.recommended)）" : id).tag(id)
                         }
                     }
-                    .onChange(of: model) { _, value in Preferences.setGeminiModel(value) }
+                    .onChange(of: model) { _, value in Preferences.setModel(value, for: .gemini) }
                 } else {
-                    LabeledContent(L.model, value: Preferences.deepSeekModel)
+                    // Any model ID can be typed; the server's list, once loaded, is a shortcut.
+                    LabeledContent(L.model) {
+                        HStack {
+                            TextField(L.modelIDPlaceholder, text: $model)
+                                .labelsHidden()
+                                .onChange(of: model) { _, value in Preferences.setModel(value, for: .openAICompatible) }
+                            if !models.isEmpty {
+                                Menu(L.chooseModel) {
+                                    ForEach(models, id: \.self) { id in Button(id) { model = id } }
+                                }
+                                .fixedSize()
+                            }
+                        }
+                    }
                 }
             } header: {
                 Text(L.aiSection)
             } footer: {
-                let note = provider == .gemini ? L.modelNote : L.deepSeekNote
+                let note = provider == .gemini ? L.modelNote : preset == .deepseek ? L.deepSeekNote : L.openAINote
                 Text("\(note)\(L.isChinese ? "" : " ")\(L.privacyNote) \(L.keyPerProvider)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -161,6 +187,22 @@ struct SettingsView: View {
         onChange()
     }
 
+    /// DeepSeek's address is built in; a model typed for another service would not exist there.
+    private func switchPreset(_ next: APIPreset) {
+        Preferences.apiPreset = next
+        preset = next
+        if next == .deepseek, !model.hasPrefix("deepseek") {
+            model = Preferences.defaultOpenAIModel
+            Preferences.setModel(model, for: .openAICompatible)
+        }
+        models = []
+        Task { await loadModels() }
+    }
+
+    private func saveBaseURL() {
+        Preferences.openAIBaseURL = baseURL
+    }
+
     private func saveKey() {
         Preferences.setAPIKey(apiKey, for: provider)
         apiKey = Preferences.apiKey(for: provider)
@@ -169,8 +211,7 @@ struct SettingsView: View {
     }
 
     private func loadModels() async {
-        let client = Preferences.client()
-        guard !client.apiKey.isEmpty,
+        guard let client = try? Preferences.client(), !client.apiKey.isEmpty,
               let loaded = try? await client.models(), !loaded.isEmpty else { return }
         models = loaded
     }

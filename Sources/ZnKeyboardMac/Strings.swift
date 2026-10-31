@@ -33,6 +33,9 @@ enum L {
 
     // Errors
     static var needKey: String { t("请先在设置里填写 API Key。", "Add your API key in Settings first.") }
+    static var badEndpoint: String {
+        t("API 地址无效，请在设置里填写以 https:// 开头的地址。", "The API address is invalid. Enter one starting with https:// in Settings.")
+    }
     static var noSelection: String { t("请先选中要处理的文字。", "Select some text first.") }
     static var tooLong: String { t("文字太长，请分段处理（最多 5000 字）。", "The text is too long; do it in parts (5,000 characters max).") }
     static var noChange: String { t("没有需要修改的地方。", "Nothing to change.") }
@@ -51,12 +54,20 @@ enum L {
 
     static var aiSection: String { t("AI 服务", "AI service") }
     static var provider: String { t("服务商", "Provider") }
+    static var openAICompatible: String { t("OpenAI 兼容", "OpenAI compatible") }
+    static var apiBaseURL: String { t("API 地址", "API address") }
     static var apiKey: String { t("API Key", "API key") }
     static var apiKeyPlaceholder: String { t("输入 API Key", "Enter your API key") }
+    static var modelIDPlaceholder: String { t("输入模型 ID", "Enter a model ID") }
+    static var chooseModel: String { t("从列表选择", "Choose from list") }
+    static var apiPreset: String { t("接口", "Endpoint") }
+    static var customPreset: String { t("自定义", "Custom") }
     static var deepSeekNote: String {
-        t("国内可直连，固定使用 deepseek-flash 模型。", "Fast in mainland China; always uses the deepseek-flash model.")
+        t("DeepSeek 国内可直连，地址已内置，只需填 API Key。", "DeepSeek is fast in mainland China; the address is built in, so only a key is needed.")
     }
-    static var getDeepSeekKey: String { t("在 DeepSeek 开放平台获取", "Get one on the DeepSeek platform") }
+    static var openAINote: String {
+        t("支持 OpenAI、OpenRouter 等兼容接口，填写对方的 API 地址和模型。", "Works with OpenAI, OpenRouter and other compatible APIs: enter their API address and model.")
+    }
     static var save: String { t("保存", "Save") }
     static var keyStored: String { t("已保存在本机钥匙串", "Saved in your Keychain") }
     static var noKeyYet: String { t("还没有 Key？", "No key yet?") }

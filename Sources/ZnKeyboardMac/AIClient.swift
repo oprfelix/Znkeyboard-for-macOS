@@ -8,6 +8,7 @@ enum RewriteMode {
 
 enum RewriteError: LocalizedError {
     case missingKey
+    case badEndpoint
     case tooLong
     case noChange
     case http(Int, String)
@@ -16,6 +17,7 @@ enum RewriteError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingKey: L.needKey
+        case .badEndpoint: L.badEndpoint
         case .tooLong: L.tooLong
         case .noChange: L.noChange
         case .http(let code, let body):
@@ -25,16 +27,30 @@ enum RewriteError: LocalizedError {
     }
 }
 
-/// Talks to Gemini's or DeepSeek's OpenAI-compatible endpoint, with the same prompts and JSON
-/// contract as ZnKeyboard for Android.
+/// Talks to Gemini's OpenAI-compatible endpoint or any other OpenAI-compatible server, with the
+/// same prompts and JSON contract as ZnKeyboard for Android.
 struct AIClient {
+    static let geminiBaseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai")!
     static let maxSourceCharacters = 5_000
 
     let provider: Provider
+    let baseURL: URL
     let apiKey: String
     let model: String
 
-    private var baseURL: URL { provider.baseURL }
+    /// [baseURL] is used for OpenAI-compatible servers only; it must be HTTPS.
+    init(provider: Provider, baseURL: String, apiKey: String, model: String) throws {
+        self.provider = provider
+        self.apiKey = apiKey
+        self.model = model
+        if provider == .gemini {
+            self.baseURL = Self.geminiBaseURL
+        } else {
+            let trimmed = baseURL.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            guard let url = URL(string: trimmed), url.scheme == "https", url.host != nil else { throw RewriteError.badEndpoint }
+            self.baseURL = url
+        }
+    }
 
     func rewrite(_ text: String, mode: RewriteMode) async throws -> String {
         guard !apiKey.isEmpty else { throw RewriteError.missingKey }
@@ -42,7 +58,7 @@ struct AIClient {
         do {
             return try await request(text, mode: mode, strictSchema: true)
         } catch RewriteError.http(let code, let body) where [400, 404, 422].contains(code) && Self.mentionsSchema(body) {
-            // DeepSeek only takes plain JSON mode.
+            // Some servers (DeepSeek, older OpenAI-compatible ones) only take plain JSON mode.
             return try await request(text, mode: mode, strictSchema: false)
         }
     }
@@ -66,7 +82,7 @@ struct AIClient {
                 ],
             ],
         ] : ["type": "json_object"]
-        var body: [String: Any] = [
+        let body: [String: Any] = [
             "model": model,
             "messages": [
                 ["role": "system", "content": Prompts.system(for: mode)],
@@ -76,8 +92,6 @@ struct AIClient {
             "max_tokens": Self.maxTokens(for: text),
             "response_format": format,
         ]
-        // DeepSeek thinks by default, which only slows a rewrite down.
-        if provider == .deepseek { body["thinking"] = ["type": "disabled"] }
 
         var request = URLRequest(url: baseURL.appendingPathComponent("chat/completions"))
         request.httpMethod = "POST"
@@ -109,8 +123,7 @@ struct AIClient {
         return ["response_format", "json_schema", "schema"].contains { lower.contains($0) }
     }
 
-    /// Models this key can use: Flash-Lite only for Gemini, everything DeepSeek lists. Loading them
-    /// also checks the key.
+    /// Models this key can use: Flash-Lite only for Gemini, everything the server lists otherwise.
     func models() async throws -> [String] {
         guard !apiKey.isEmpty else { throw RewriteError.missingKey }
         var request = URLRequest(url: baseURL.appendingPathComponent("models"))
