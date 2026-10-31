@@ -12,8 +12,8 @@ enum ShortcutAction: String, CaseIterable {
 
     var defaultShortcut: Shortcut {
         self == .polish
-            ? Shortcut(keyCode: kVK_ANSI_R, modifiers: cmdKey | optionKey, key: "R")
-            : Shortcut(keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey, key: "T")
+            ? Shortcut(keyCode: kVK_ANSI_R, modifiers: cmdKey | shiftKey, key: "R")
+            : Shortcut(keyCode: kVK_ANSI_T, modifiers: cmdKey | shiftKey, key: "T")
     }
 }
 

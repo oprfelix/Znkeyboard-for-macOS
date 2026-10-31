@@ -30,6 +30,24 @@ enum L {
     static var copy: String { t("复制", "Copy") }
     static var cancel: String { t("取消", "Cancel") }
     static var openSettings: String { t("打开设置", "Open Settings") }
+    static var retry: String { t("重试", "Try Again") }
+    static var regenerate: String { t("重新生成", "Regenerate") }
+    static var closeHint: String { t("关闭（esc）", "Close (esc)") }
+    static var copyHint: String { t("复制结果（⌘C）", "Copy the result (⌘C)") }
+    static var about: String { t("关于 ZnKeyboard", "About ZnKeyboard") }
+    static var checkForUpdates: String { t("检查更新…", "Check for Updates…") }
+    static func updateAvailable(_ version: String) -> String { t("有新版本 \(version)", "ZnKeyboard \(version) is available") }
+    static func updateAvailableNote(_ current: String) -> String {
+        t("你正在使用 \(current)。下载后把新版拖进「应用程序」替换即可，设置和 API Key 都会保留。",
+          "You have \(current). Download it and drag it into Applications to replace this one; your settings and API key stay.")
+    }
+    static var download: String { t("下载", "Download") }
+    static var later: String { t("以后再说", "Later") }
+    static func upToDate(_ current: String) -> String { t("ZnKeyboard \(current) 已是最新版本", "ZnKeyboard \(current) is up to date") }
+    static var updateCheckFailed: String { t("无法检查更新", "Couldn't check for updates") }
+    static var updateCheckFailedNote: String { t("请检查网络，或到 GitHub 发布页查看最新版本。", "Check your connection, or see the latest release on GitHub.") }
+    static var openReleases: String { t("打开发布页", "Open Releases") }
+    static var ok: String { t("好", "OK") }
 
     // Errors
     static var needKey: String { t("请先在设置里填写 API Key。", "Add your API key in Settings first.") }
@@ -59,17 +77,19 @@ enum L {
     static var apiKey: String { t("API Key", "API key") }
     static var apiKeyPlaceholder: String { t("输入 API Key", "Enter your API key") }
     static var modelIDPlaceholder: String { t("输入模型 ID", "Enter a model ID") }
-    static var chooseModel: String { t("从列表选择", "Choose from list") }
+    static var chooseModel: String { t("选择模型", "Choose a model") }
     static var apiPreset: String { t("接口", "Endpoint") }
     static var customPreset: String { t("自定义", "Custom") }
     static var deepSeekNote: String {
-        t("DeepSeek 国内可直连，地址已内置，只需填 API Key。", "DeepSeek is fast in mainland China; the address is built in, so only a key is needed.")
+        t("地址已内置，填好 API Key 就能用，国内可直连。润色或翻译时，选中的文字会发给 DeepSeek。",
+          "The address is built in, so a key is all you need; fast in mainland China. When you polish or translate, the selected text is sent to DeepSeek.")
     }
     static var openAINote: String {
-        t("支持 OpenAI、OpenRouter 等兼容接口，填写对方的 API 地址和模型。", "Works with OpenAI, OpenRouter and other compatible APIs: enter their API address and model.")
+        t("可接 OpenAI、OpenRouter 等兼容服务，填写对方的 API 地址和模型。润色或翻译时，选中的文字会发给该服务。",
+          "Works with OpenAI, OpenRouter and other compatible services: enter their API address and model. When you polish or translate, the selected text is sent to that service.")
     }
     static var keyChecking: String { t("正在验证 API Key…", "Checking the API key…") }
-    static var keyWorks: String { t("API Key 可用，已保存在本机钥匙串", "API key works · saved in your Keychain") }
+    static var keyWorks: String { t("API Key 可用", "API key works") }
     static var keyInvalid: String { t("API Key 无效或没有权限，请检查是否复制完整、是否已过期。", "This API key was rejected. Check it was copied in full and is still active.") }
     static func keyUnverified(_ reason: String) -> String { t("暂时无法验证 API Key：\(reason)", "Couldn't check the API key: \(reason)") }
     static var regionUnsupported: String {
@@ -78,25 +98,25 @@ enum L {
     static var getDeepSeekKey: String { t("在 DeepSeek 开放平台获取", "Get one on the DeepSeek platform") }
     static var noKeyYet: String { t("还没有 Key？", "No key yet?") }
     static var getKey: String { t("在 Google AI Studio 免费获取", "Get one free in Google AI Studio") }
-    static var keyPerProvider: String { t("每个服务商的 Key 分开保存。", "Each provider keeps its own key.") }
     static var model: String { t("模型", "Model") }
     static var recommended: String { t("推荐", "recommended") }
-    static var modelNote: String { t("仅提供 Flash-Lite 模型，速度快、费用低。", "Flash-Lite models only: fast and low cost.") }
-    static var privacyNote: String {
-        t("润色和翻译时，选中的文字会发送给所选的服务商。", "When you polish or translate, the selected text is sent to the selected provider.")
+    static var modelNote: String {
+        t("只提供速度快、费用低的 Flash-Lite 模型。润色或翻译时，选中的文字会发给 Google Gemini。",
+          "Only the fast, low-cost Flash-Lite models. When you polish or translate, the selected text is sent to Google Gemini.")
     }
 
     static var usageSection: String { t("使用", "Usage") }
     static var caretToolbar: String { t("选中文字后显示按钮", "Show buttons on selected text") }
     static var caretToolbarNote: String {
-        t("在输入框里选中文字（如 ⌘A 全选）后，旁边出现「润色」和「AI 翻译为」。",
-          "Select text in a text box (for example with ⌘A) and Polish and Translate appear beside it.")
+        t("用鼠标拖选或按 ⌘A 全选后，旁边会出现「润色」和「AI 翻译为」按钮。",
+          "Drag over text or press ⌘A, and Polish and Translate buttons appear beside it.")
     }
-    static var polishShortcut: String { t("润色快捷键", "Polish shortcut") }
-    static var translateShortcut: String { t("AI 翻译快捷键", "Translate shortcut") }
+    static var shortcutsSection: String { t("快捷键", "Shortcuts") }
+    static var polishShortcut: String { t("润色", "Polish") }
+    static var translateShortcut: String { t("AI 翻译", "Translate") }
     static var shortcutsNote: String {
-        t("在任意 App 选中文字后按快捷键，确认后替换原文。按钮不出现的 App 也能用。点快捷键可以改成你习惯的组合。",
-          "Select text in any app and press a shortcut, then confirm to replace it. Works even where the buttons don't appear. Click a shortcut to change it.")
+        t("选中文字后按快捷键即可，按钮不出现的 App 也能用。点击快捷键可以修改。",
+          "Select text and press a shortcut; it works even where the buttons don't appear. Click a shortcut to change it.")
     }
     static var pressShortcut: String { t("按下新快捷键…", "Press keys…") }
     static var shortcutHint: String { t("点击后按下新的组合键，Esc 取消", "Click, then press the new combination; Esc cancels") }
@@ -111,8 +131,7 @@ enum L {
     static var notGranted: String { t("未开启", "Off") }
     static var grant: String { t("去开启", "Turn On…") }
     static var accessibilityNote: String {
-        t("用于读取和替换选中的文字。在 系统设置 → 隐私与安全性 → 辅助功能 里打开 ZnKeyboard。",
-          "Needed to read and replace selected text. Turn on ZnKeyboard in System Settings → Privacy & Security → Accessibility.")
+        t("用于读取和替换选中的文字。", "Needed to read and replace the text you select.")
     }
 
     static var generalSection: String { t("通用", "General") }

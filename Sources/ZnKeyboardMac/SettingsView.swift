@@ -84,10 +84,15 @@ struct SettingsView: View {
                                 .labelsHidden()
                                 .onChange(of: model) { _, value in Preferences.setModel(value, for: .openAICompatible) }
                             if !models.isEmpty {
-                                Menu(L.chooseModel) {
+                                Menu {
                                     ForEach(models, id: \.self) { id in Button(id) { model = id } }
+                                } label: {
+                                    Image(systemName: "chevron.down")
                                 }
+                                .menuStyle(.borderlessButton)
+                                .menuIndicator(.hidden)
                                 .fixedSize()
+                                .help(L.chooseModel)
                             }
                         }
                     }
@@ -95,8 +100,7 @@ struct SettingsView: View {
             } header: {
                 Text(L.aiSection)
             } footer: {
-                let note = provider == .gemini ? L.modelNote : preset == .deepseek ? L.deepSeekNote : L.openAINote
-                Text("\(note)\(L.isChinese ? "" : " ")\(L.privacyNote) \(L.keyPerProvider)")
+                Text(provider == .gemini ? L.modelNote : preset == .deepseek ? L.deepSeekNote : L.openAINote)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -118,10 +122,15 @@ struct SettingsView: View {
                     Text(L.caretToolbarNote).font(.caption).foregroundStyle(.secondary)
                 }
 
+            } header: {
+                Text(L.usageSection)
+            }
+
+            Section {
                 LabeledContent(L.polishShortcut) { ShortcutRecorder(action: .polish, apply: applyShortcut) }
                 LabeledContent(L.translateShortcut) { ShortcutRecorder(action: .translate, apply: applyShortcut) }
             } header: {
-                Text(L.usageSection)
+                Text(L.shortcutsSection)
             } footer: {
                 Text(L.shortcutsNote).font(.caption).foregroundStyle(.secondary)
             }
@@ -161,7 +170,12 @@ struct SettingsView: View {
                     Text("中文").tag("zh")
                     Text("English").tag("en")
                 }
-                LabeledContent(L.version, value: Self.version)
+                LabeledContent(L.version) {
+                    HStack(spacing: 10) {
+                        Text(Self.version).foregroundStyle(.secondary)
+                        Button(L.checkForUpdates) { Updates.check() }
+                    }
+                }
             }
         }
         .formStyle(.grouped)

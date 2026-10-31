@@ -79,6 +79,8 @@ final class CaretToolbar {
     private func mouseUp(clickCount: Int) {
         let point = NSEvent.mouseLocation
         let dragged = mouseDownPoint.map { hypot($0.x - point.x, $0.y - point.y) >= 6 } ?? false
+        // Screen y grows upward: a drag that ended higher than it began selected the lines below.
+        let draggedUp = dragged && (mouseDownPoint.map { point.y > $0.y + 6 } ?? false)
         guard dragged || clickCount >= 2 else { return }
         // Let the app finish updating its selection first.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
@@ -91,7 +93,7 @@ final class CaretToolbar {
             guard state == .selected || state == .unknown else { return }
             self.mouseAnchorPID = app.processIdentifier
             self.model.language = Preferences.translateTarget.code
-            self.show(atPointer: point)
+            self.show(atPointer: point, above: draggedUp)
         }
     }
 
@@ -101,8 +103,23 @@ final class CaretToolbar {
         hide()
     }
 
+    /// Set while a fade-out runs; showing again cancels the pending orderOut.
+    private var hiding: UUID?
+
     func hide() {
-        if panel.isVisible { panel.orderOut(nil) }
+        guard panel.isVisible, hiding == nil else { return }
+        let token = UUID()
+        hiding = token
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.12
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.hiding == token else { return }
+                self.hiding = nil
+                self.panel.orderOut(nil)
+            }
+        })
     }
 
     private func tick() {
@@ -131,7 +148,7 @@ final class CaretToolbar {
             hide()
             return
         }
-        guard Date().timeIntervalSince(unchangedSince) >= Self.settleDelay, !panel.isVisible else { return }
+        guard Date().timeIntervalSince(unchangedSince) >= Self.settleDelay, !panel.isVisible || hiding != nil else { return }
         model.language = Preferences.translateTarget.code
         show(below: caret)
     }
@@ -142,24 +159,38 @@ final class CaretToolbar {
         hide()
     }
 
-    /// Just below and right of where the mouse selection ended.
-    private func show(atPointer point: NSPoint) {
-        place(NSRect(x: point.x, y: point.y - 4, width: 1, height: 8))
+    /// Beside where the mouse selection ended: below it, or above when the drag went upward, so
+    /// the toolbar covers neither the selected lines nor the pointer.
+    private func show(atPointer point: NSPoint, above: Bool) {
+        place(NSRect(x: point.x, y: point.y - 4, width: 1, height: 8), preferAbove: above)
     }
 
-    private func show(below caret: NSRect) { place(caret) }
+    private func show(below caret: NSRect) { place(caret, preferAbove: false) }
 
-    /// Just below [anchor]'s end; above it when there is no room below.
-    private func place(_ caret: NSRect) {
+    /// Next to [caret]'s end, on the preferred side when there is room; fades in.
+    private func place(_ caret: NSRect, preferAbove: Bool) {
         guard let content = panel.contentView else { return }
+        model.shortcutHints = (Preferences.shortcut(for: .polish).display, Preferences.shortcut(for: .translate).display)
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize
         let screen = NSScreen.screens.first { $0.frame.intersects(caret) }?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
-        var origin = NSPoint(x: caret.maxX + 6, y: caret.minY - 6 - size.height)
-        if origin.y < screen.minY { origin.y = caret.maxY + 6 }
+        let below = caret.minY - 6 - size.height
+        let above = caret.maxY + 6
+        var origin = NSPoint(x: caret.maxX + 6, y: preferAbove ? above : below)
+        if preferAbove, origin.y + size.height > screen.maxY { origin.y = below }
+        if !preferAbove, origin.y < screen.minY { origin.y = above }
         origin.x = min(max(origin.x, screen.minX + 4), screen.maxX - size.width - 4)
+        hiding = nil
+        let wasVisible = panel.isVisible
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
+        if !wasVisible { panel.alphaValue = 0 }
         panel.orderFrontRegardless()
+        // The shadow follows the capsule only once the glass has been drawn.
+        DispatchQueue.main.async { [panel] in panel.invalidateShadow() }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            panel.animator().alphaValue = 1
+        }
     }
 
     private func chooseLanguage() {
@@ -193,6 +224,8 @@ final class CaretToolbar {
 
 final class CaretToolbarModel: ObservableObject {
     @Published var language = "EN"
+    /// Shown in the buttons' tooltips, e.g. "⇧⌘R".
+    @Published var shortcutHints = ("", "")
     var onPolish: () -> Void = {}
     var onTranslate: () -> Void = {}
     var onChooseLanguage: () -> Void = {}
@@ -205,35 +238,83 @@ private struct CaretToolbarView: View {
         HStack(spacing: 2) {
             Button(action: model.onPolish) {
                 Label(L.polish, systemImage: "sparkles")
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 10)
                     .frame(height: 26)
-                    .contentShape(Rectangle())
             }
+            .help("\(L.polish)  \(model.shortcutHints.0)")
             Divider().frame(height: 16)
-            Button(action: model.onTranslate) {
-                Text(L.translateShort)
-                    .padding(.leading, 8)
-                    .padding(.trailing, 4)
-                    .frame(height: 26)
-                    .contentShape(Rectangle())
-            }
-            Button(action: model.onChooseLanguage) {
-                Text("\(model.language) ▾")
+            HStack(spacing: 4) {
+                Button(action: model.onTranslate) {
+                    Label(L.translateShort, systemImage: "translate")
+                        .padding(.leading, 10)
+                        .padding(.trailing, 2)
+                        .frame(height: 26)
+                }
+                .help("\(L.translateShort) \(model.language)  \(model.shortcutHints.1)")
+                Button(action: model.onChooseLanguage) {
+                    HStack(spacing: 2) {
+                        Text(model.language)
+                        Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
+                    }
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 7)
                     .frame(height: 20)
-                    .background(Color(red: 35 / 255, green: 64 / 255, blue: 128 / 255), in: Capsule())
+                    .background(Color.accentColor, in: Capsule())
+                }
+                .buttonStyle(PressableStyle(hover: false))
+                .help(L.translateMenu)
+                .padding(.trailing, 4)
             }
-            .padding(.trailing, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle(hover: true))
+        .labelStyle(.titleAndIcon)
         .font(.system(size: 12, weight: .medium))
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 3)
         .frame(height: 32)
-        .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.separator))
+        .modifier(PillBackground())
         .fixedSize()
+    }
+}
+
+/// A plain button with the system's hover and pressed highlight.
+private struct PressableStyle: ButtonStyle {
+    let hover: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        PressableBody(configuration: configuration, hover: hover)
+    }
+
+    private struct PressableBody: View {
+        let configuration: ButtonStyleConfiguration
+        let hover: Bool
+        @State private var hovering = false
+
+        var body: some View {
+            configuration.label
+                .contentShape(Capsule())
+                .background {
+                    if hover {
+                        Capsule().fill(.primary.opacity(configuration.isPressed ? 0.14 : hovering ? 0.08 : 0))
+                    }
+                }
+                .opacity(!hover && configuration.isPressed ? 0.8 : 1)
+                .onHover { hovering = $0 }
+                .animation(.easeOut(duration: 0.12), value: hovering)
+        }
+    }
+}
+
+/// Liquid Glass on macOS 26 and later; a material capsule with a hairline before that.
+private struct PillBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content
+                .background(.regularMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.separator))
+        }
     }
 }
 

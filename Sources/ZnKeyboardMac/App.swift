@@ -76,11 +76,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.removeAllItems()
 
         let polish = NSMenuItem(title: L.polishSelection, action: #selector(polish), keyEquivalent: "")
+        polish.image = Self.symbol("sparkles")
         Self.showShortcut(Preferences.shortcut(for: .polish), on: polish)
         menu.addItem(polish)
 
         let target = Preferences.translateTarget
         let translate = NSMenuItem(title: L.translateTo(target), action: #selector(translate), keyEquivalent: "")
+        translate.image = Self.symbol("translate")
         Self.showShortcut(Preferences.shortcut(for: .translate), on: translate)
         menu.addItem(translate)
 
@@ -92,13 +94,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             languages.addItem(item)
         }
         let languagesItem = NSMenuItem(title: L.translateMenu, action: nil, keyEquivalent: "")
+        languagesItem.image = Self.symbol("globe")
         languagesItem.submenu = languages
         menu.addItem(languagesItem)
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: L.settings, action: #selector(openSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: L.quit, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) { item.target = self }
+        let settings = NSMenuItem(title: L.settings, action: #selector(openSettings), keyEquivalent: ",")
+        settings.image = Self.symbol("gearshape")
+        menu.addItem(settings)
+        let updates = NSMenuItem(title: L.checkForUpdates, action: #selector(checkForUpdates), keyEquivalent: "")
+        updates.image = Self.symbol("arrow.down.circle")
+        menu.addItem(updates)
+        let about = NSMenuItem(title: L.about, action: #selector(showAbout), keyEquivalent: "")
+        about.image = Self.symbol("info.circle")
+        menu.addItem(about)
+        menu.addItem(.separator())
+        let quit = NSMenuItem(title: L.quit, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.image = Self.symbol("power")
+        menu.addItem(quit)
+        for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) && item.action != nil { item.target = self }
         for item in languages.items { item.target = self }
     }
 
@@ -125,6 +139,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     @objc private func openSettings() { showSettings() }
+
+    private static func symbol(_ name: String) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil)
+    }
+
+    @objc private func checkForUpdates() { Updates.check() }
+
+    @objc private func showAbout() {
+        NSApp.activate(ignoringOtherApps: true)
+        let credits = NSMutableAttributedString(string: "oprfelix.github.io/znkeyboard", attributes: [
+            .link: URL(string: "https://oprfelix.github.io/znkeyboard/")!,
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+        ])
+        credits.setAlignment(.center, range: NSRange(location: 0, length: credits.length))
+        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
+    }
+
 
     private func runAfterMenuCloses(_ mode: RewriteMode) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in self?.controller.run(mode) }
