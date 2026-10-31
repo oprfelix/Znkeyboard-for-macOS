@@ -68,8 +68,14 @@ enum L {
     static var openAINote: String {
         t("支持 OpenAI、OpenRouter 等兼容接口，填写对方的 API 地址和模型。", "Works with OpenAI, OpenRouter and other compatible APIs: enter their API address and model.")
     }
-    static var save: String { t("保存", "Save") }
-    static var keyStored: String { t("已保存在本机钥匙串", "Saved in your Keychain") }
+    static var keyChecking: String { t("正在验证 API Key…", "Checking the API key…") }
+    static var keyWorks: String { t("API Key 可用，已保存在本机钥匙串", "API key works · saved in your Keychain") }
+    static var keyInvalid: String { t("API Key 无效或没有权限，请检查是否复制完整、是否已过期。", "This API key was rejected. Check it was copied in full and is still active.") }
+    static func keyUnverified(_ reason: String) -> String { t("暂时无法验证 API Key：\(reason)", "Couldn't check the API key: \(reason)") }
+    static var regionUnsupported: String {
+        t("Gemini 在你所在的地区不可用，请改用 OpenAI 兼容（DeepSeek），或通过代理网络使用。", "Gemini isn't available in your region. Use OpenAI compatible (DeepSeek), or reach Gemini through a proxy.")
+    }
+    static var getDeepSeekKey: String { t("在 DeepSeek 开放平台获取", "Get one on the DeepSeek platform") }
     static var noKeyYet: String { t("还没有 Key？", "No key yet?") }
     static var getKey: String { t("在 Google AI Studio 免费获取", "Get one free in Google AI Studio") }
     static var keyPerProvider: String { t("每个服务商的 Key 分开保存。", "Each provider keeps its own key.") }

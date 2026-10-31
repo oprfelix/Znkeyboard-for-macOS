@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var baseURL = Preferences.openAIBaseURL
     @State private var apiKey = Preferences.apiKey(for: Preferences.provider)
     @State private var storedKey = Preferences.apiKey(for: Preferences.provider)
+    @State private var keyCheck = KeyCheck.idle
     @State private var models: [String] = []
     @State private var model = Preferences.model(for: Preferences.provider)
     @State private var target = Preferences.translateTarget.code
@@ -41,25 +42,31 @@ struct SettingsView: View {
                     }
                 }
 
+                // Saved shortly after typing or pasting stops, then checked against the provider.
                 LabeledContent(L.apiKey) {
-                    HStack {
-                        SecureField(L.apiKeyPlaceholder, text: $apiKey)
-                            .labelsHidden()
-                            .onSubmit(saveKey)
-                        Button(L.save, action: saveKey)
-                            .disabled(apiKey.trimmingCharacters(in: .whitespaces) == storedKey)
-                    }
+                    SecureField(L.apiKeyPlaceholder, text: $apiKey)
+                        .labelsHidden()
+                        .onSubmit(saveKey)
                 }
-                if storedKey.isEmpty, provider == .gemini {
-                    HStack(spacing: 4) {
-                        Text(L.noKeyYet).foregroundStyle(.secondary)
-                        Link(L.getKey + " ↗", destination: URL(string: "https://aistudio.google.com/apikey")!)
-                    }
-                    .font(.caption)
-                } else if !storedKey.isEmpty {
-                    Label(L.keyStored, systemImage: "checkmark.circle.fill")
+                .task(id: apiKey) {
+                    guard apiKey.trimmingCharacters(in: .whitespacesAndNewlines) != storedKey else { return }
+                    try? await Task.sleep(for: .milliseconds(600))
+                    if !Task.isCancelled { saveKey() }
+                }
+                if storedKey.isEmpty {
+                    if provider == .gemini || preset == .deepseek {
+                        HStack(spacing: 4) {
+                            Text(L.noKeyYet).foregroundStyle(.secondary)
+                            if provider == .gemini {
+                                Link(L.getKey + " ↗", destination: URL(string: "https://aistudio.google.com/apikey")!)
+                            } else {
+                                Link(L.getDeepSeekKey + " ↗", destination: URL(string: "https://platform.deepseek.com/api_keys")!)
+                            }
+                        }
                         .font(.caption)
-                        .foregroundStyle(.green)
+                    }
+                } else {
+                    keyCheckRow
                 }
 
                 if provider == .gemini {
@@ -162,7 +169,11 @@ struct SettingsView: View {
         .fixedSize(horizontal: false, vertical: true)
         .id(uiLanguage) // Rebuild every label in the new language.
         .onReceive(permissionTimer) { _ in trusted = TextBridge.isTrusted }
-        .task(id: provider) { await loadModels() }
+        .task(id: "\(provider.rawValue)|\(preset.rawValue)|\(baseURL)") {
+            // A typed address settles before it is checked.
+            if provider == .openAICompatible, preset == .custom { try? await Task.sleep(for: .milliseconds(600)) }
+            if !Task.isCancelled { await loadModels() }
+        }
     }
 
     private static var version: String {
@@ -196,7 +207,6 @@ struct SettingsView: View {
             Preferences.setModel(model, for: .openAICompatible)
         }
         models = []
-        Task { await loadModels() }
     }
 
     private func saveBaseURL() {
@@ -204,15 +214,69 @@ struct SettingsView: View {
     }
 
     private func saveKey() {
+        guard apiKey.trimmingCharacters(in: .whitespacesAndNewlines) != storedKey else { return }
         Preferences.setAPIKey(apiKey, for: provider)
-        apiKey = Preferences.apiKey(for: provider)
-        storedKey = apiKey
+        storedKey = Preferences.apiKey(for: provider)
         Task { await loadModels() }
     }
 
+    /// Loads the model list, which also checks the key.
     private func loadModels() async {
-        guard let client = try? Preferences.client(), !client.apiKey.isEmpty,
-              let loaded = try? await client.models(), !loaded.isEmpty else { return }
-        models = loaded
+        guard let client = try? Preferences.client() else {
+            keyCheck = .unverified(L.badEndpoint)
+            return
+        }
+        guard !client.apiKey.isEmpty else {
+            keyCheck = .idle
+            return
+        }
+        keyCheck = .checking
+        do {
+            let loaded = try await client.models()
+            keyCheck = .works
+            if !loaded.isEmpty { models = loaded }
+        } catch RewriteError.http(let code, let body) {
+            if body.lowercased().contains("location is not supported") {
+                keyCheck = .unverified(L.regionUnsupported)
+            } else {
+                keyCheck = [400, 401, 403].contains(code) ? .rejected : .unverified("HTTP \(code)")
+            }
+        } catch is CancellationError {
+            // A newer check replaced this one.
+        } catch {
+            keyCheck = .unverified(L.networkFailed)
+        }
     }
+
+    /// A dot and a short line under the key: checking, works, or why not.
+    @ViewBuilder private var keyCheckRow: some View {
+        switch keyCheck {
+        case .idle:
+            EmptyView()
+        case .checking:
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.mini)
+                Text(L.keyChecking).foregroundStyle(.secondary)
+            }
+            .font(.caption)
+        case .works:
+            Label { Text(L.keyWorks) } icon: { Circle().fill(.green).frame(width: 8, height: 8) }
+                .font(.caption)
+                .foregroundStyle(.green)
+        case .rejected:
+            Label { Text(L.keyInvalid) } icon: { Circle().fill(.red).frame(width: 8, height: 8) }
+                .font(.caption)
+                .foregroundStyle(.red)
+        case .unverified(let reason):
+            Label { Text(L.keyUnverified(reason)) } icon: { Circle().fill(.red).frame(width: 8, height: 8) }
+                .font(.caption)
+                .foregroundStyle(.red)
+        }
+    }
+}
+
+/// The settings window's check of the saved key.
+private enum KeyCheck: Equatable {
+    case idle, checking, works, rejected
+    case unverified(String)
 }
