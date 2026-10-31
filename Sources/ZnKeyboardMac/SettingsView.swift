@@ -7,7 +7,6 @@ struct SettingsView: View {
     var applyShortcut: (ShortcutAction, Shortcut?) -> ShortcutResult = { _, shortcut in .ok(shortcut ?? .init(keyCode: 0, modifiers: 0, key: "")) }
 
     @State private var provider = Preferences.provider
-    @State private var baseURL = Preferences.openAIBaseURL
     @State private var apiKey = Preferences.apiKey(for: Preferences.provider)
     @State private var storedKey = Preferences.apiKey(for: Preferences.provider)
     @State private var models: [String] = []
@@ -25,15 +24,6 @@ struct SettingsView: View {
                     ForEach(Provider.allCases) { Text($0.displayName).tag($0) }
                 }
 
-                if provider == .openAICompatible {
-                    LabeledContent(L.apiBaseURL) {
-                        TextField(Preferences.defaultOpenAIBaseURL, text: $baseURL)
-                            .labelsHidden()
-                            .onSubmit(saveBaseURL)
-                            .onChange(of: baseURL) { _, _ in saveBaseURL() }
-                    }
-                }
-
                 LabeledContent(L.apiKey) {
                     HStack {
                         SecureField(L.apiKeyPlaceholder, text: $apiKey)
@@ -43,10 +33,14 @@ struct SettingsView: View {
                             .disabled(apiKey.trimmingCharacters(in: .whitespaces) == storedKey)
                     }
                 }
-                if storedKey.isEmpty, provider == .gemini {
+                if storedKey.isEmpty {
                     HStack(spacing: 4) {
                         Text(L.noKeyYet).foregroundStyle(.secondary)
-                        Link(L.getKey + " ↗", destination: URL(string: "https://aistudio.google.com/apikey")!)
+                        if provider == .gemini {
+                            Link(L.getKey + " ↗", destination: URL(string: "https://aistudio.google.com/apikey")!)
+                        } else {
+                            Link(L.getDeepSeekKey + " ↗", destination: URL(string: "https://platform.deepseek.com/api_keys")!)
+                        }
                     }
                     .font(.caption)
                 } else if !storedKey.isEmpty {
@@ -61,27 +55,14 @@ struct SettingsView: View {
                             Text(id == Preferences.defaultModel ? "\(id)（\(L.recommended)）" : id).tag(id)
                         }
                     }
-                    .onChange(of: model) { _, value in Preferences.setModel(value, for: .gemini) }
+                    .onChange(of: model) { _, value in Preferences.setGeminiModel(value) }
                 } else {
-                    // Any model ID can be typed; the server's list, once loaded, is a shortcut.
-                    LabeledContent(L.model) {
-                        HStack {
-                            TextField(L.modelIDPlaceholder, text: $model)
-                                .labelsHidden()
-                                .onChange(of: model) { _, value in Preferences.setModel(value, for: .openAICompatible) }
-                            if !models.isEmpty {
-                                Menu(L.chooseModel) {
-                                    ForEach(models, id: \.self) { id in Button(id) { model = id } }
-                                }
-                                .fixedSize()
-                            }
-                        }
-                    }
+                    LabeledContent(L.model, value: Preferences.deepSeekModel)
                 }
             } header: {
                 Text(L.aiSection)
             } footer: {
-                let note = provider == .gemini ? L.modelNote : L.openAINote
+                let note = provider == .gemini ? L.modelNote : L.deepSeekNote
                 Text("\(note)\(L.isChinese ? "" : " ")\(L.privacyNote) \(L.keyPerProvider)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -180,10 +161,6 @@ struct SettingsView: View {
         onChange()
     }
 
-    private func saveBaseURL() {
-        Preferences.openAIBaseURL = baseURL
-    }
-
     private func saveKey() {
         Preferences.setAPIKey(apiKey, for: provider)
         apiKey = Preferences.apiKey(for: provider)
@@ -192,7 +169,8 @@ struct SettingsView: View {
     }
 
     private func loadModels() async {
-        guard let client = try? Preferences.client(), !client.apiKey.isEmpty,
+        let client = Preferences.client()
+        guard !client.apiKey.isEmpty,
               let loaded = try? await client.models(), !loaded.isEmpty else { return }
         models = loaded
     }

@@ -189,15 +189,60 @@ func write(_ data: Data, _ path: String) {
     try! data.write(to: URL(fileURLWithPath: path))
 }
 
+/// macOS: the artwork on a white rounded tile in the standard 824-point icon grid. macOS 26 puts
+/// icons without a full tile on a grey one of its own.
+func drawMacIcon(detailed: Bool) {
+    let tile = NSBezierPath(roundedRect: NSRect(x: 100, y: 100, width: 824, height: 824), xRadius: 185, yRadius: 185)
+    NSGraphicsContext.saveGraphicsState()
+    let shadow = NSShadow()
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.22)
+    shadow.shadowBlurRadius = 20
+    shadow.shadowOffset = NSSize(width: 0, height: -10)
+    shadow.set()
+    NSColor.white.setFill()
+    tile.fill()
+    NSGraphicsContext.restoreGraphicsState()
+    NSGraphicsContext.saveGraphicsState()
+    let art = NSAffineTransform()
+    art.translateX(by: 512, yBy: 512)
+    art.scale(by: 0.74)
+    art.translateX(by: -512, yBy: -512)
+    art.concat()
+    drawColor(detailed: detailed)
+    NSGraphicsContext.restoreGraphicsState()
+}
+
+/// Windows: the same white tile, filling more of the canvas as Windows icons do. [small] sizes
+/// (the tray, small list views) use nearly the whole square so the artwork stays legible.
+func drawWindowsIcon(detailed: Bool, small: Bool) {
+    let inset: CGFloat = small ? 16 : 56
+    let side = 1024 - 2 * inset
+    NSColor.white.setFill()
+    NSBezierPath(roundedRect: NSRect(x: inset, y: inset, width: side, height: side), xRadius: side * 0.2, yRadius: side * 0.2).fill()
+    // A hairline keeps the white tile visible on light backgrounds.
+    NSColor.black.withAlphaComponent(0.10).setStroke()
+    let edge = NSBezierPath(roundedRect: NSRect(x: inset + 6, y: inset + 6, width: side - 12, height: side - 12), xRadius: side * 0.2 - 6, yRadius: side * 0.2 - 6)
+    edge.lineWidth = small ? 40 : 12
+    edge.stroke()
+    NSGraphicsContext.saveGraphicsState()
+    let art = NSAffineTransform()
+    art.translateX(by: 512, yBy: 512)
+    art.scale(by: small ? 0.86 : 0.78)
+    art.translateX(by: -512, yBy: -512)
+    art.concat()
+    drawColor(detailed: detailed)
+    NSGraphicsContext.restoreGraphicsState()
+}
+
 // macOS: an iconset with the small sizes simplified, then iconutil.
 let iconset = NSTemporaryDirectory() + "AppIcon.iconset"
 try? fm.removeItem(atPath: iconset)
 for points in [16, 32, 128, 256, 512] {
     for (suffix, pixels) in [("", points), ("@2x", points * 2)] {
-        write(png(pixels: pixels) { drawColor(detailed: pixels >= 64) }, "\(iconset)/icon_\(points)x\(points)\(suffix).png")
+        write(png(pixels: pixels) { drawMacIcon(detailed: pixels >= 64) }, "\(iconset)/icon_\(points)x\(points)\(suffix).png")
     }
 }
-write(png(pixels: 1024) { drawColor(detailed: true) }, "Resources/AppIcon-1024.png")
+write(png(pixels: 1024) { drawMacIcon(detailed: true) }, "Resources/AppIcon-1024.png")
 let iconutil = Process()
 iconutil.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
 iconutil.arguments = ["-c", "icns", iconset, "-o", "Resources/AppIcon.icns"]
@@ -208,8 +253,8 @@ print("Wrote Resources/AppIcon.icns")
 if CommandLine.arguments.count > 1 {
     let out = CommandLine.arguments[1]
     // Windows: the exe icon, and a tray icon that stays legible at 16-32 px.
-    write(ico([16, 24, 32, 48, 64, 128, 256].map { size in (size, png(pixels: size) { drawColor(detailed: size >= 48) }) }), "\(out)/windows/AppIcon.ico")
-    write(ico([16, 20, 24, 32, 40, 48].map { size in (size, png(pixels: size) { drawColor(detailed: false) }) }), "\(out)/windows/TrayIcon.ico")
+    write(ico([16, 24, 32, 48, 64, 128, 256].map { size in (size, png(pixels: size) { drawWindowsIcon(detailed: size >= 48, small: size < 48) }) }), "\(out)/windows/AppIcon.ico")
+    write(ico([16, 20, 24, 32, 40, 48].map { size in (size, png(pixels: size) { drawWindowsIcon(detailed: false, small: true) }) }), "\(out)/windows/TrayIcon.ico")
     // Android adaptive layers: 108 dp canvases, artwork kept inside the 66 dp safe zone.
     for (density, pixels) in [("mdpi", 108), ("hdpi", 162), ("xhdpi", 216), ("xxhdpi", 324), ("xxxhdpi", 432)] {
         write(png(pixels: pixels, scale: 0.62) { drawColor(detailed: true) }, "\(out)/android/mipmap-\(density)/ic_launcher_foreground.png")

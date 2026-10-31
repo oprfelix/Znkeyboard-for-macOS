@@ -44,14 +44,7 @@ final class Controller {
             panel.showError(L.needAccessibility, offerSettings: true)
             return
         }
-        let client: AIClient
-        do {
-            client = try Preferences.client()
-        } catch {
-            showPanel()
-            panel.showError(L.badEndpoint, offerSettings: true)
-            return
-        }
+        let client = Preferences.client()
         guard !client.apiKey.isEmpty else {
             showPanel()
             panel.showError(L.needKey, offerSettings: true)
@@ -81,9 +74,9 @@ final class Controller {
                 guard current == generation, panel.isVisible else { return }
                 let message = (error as? RewriteError)?.errorDescription
                     ?? ((error as? URLError) != nil ? L.networkFailed : error.localizedDescription)
-                // Key, model or endpoint problems are fixed in Settings.
+                // Key or model problems are fixed in Settings.
                 let fixableInSettings: Bool = switch error as? RewriteError {
-                case .missingKey, .badEndpoint, .http(400, _), .http(401, _), .http(403, _), .http(404, _): true
+                case .missingKey, .http(400, _), .http(401, _), .http(403, _), .http(404, _): true
                 default: false
                 }
                 panel.showError(message, offerSettings: fixableInSettings)

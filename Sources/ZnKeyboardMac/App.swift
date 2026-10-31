@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Preferences.migrate()
         installEditMenu()
         controller.openSettings = { [weak self] in self?.showSettings() }
         controller.onBusyChange = { [weak self] busy in self?.statusItem?.button?.image = MenuBarIcon.image(busy: busy) }

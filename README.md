@@ -1,8 +1,8 @@
 # ZnKeyboard for macOS
 
 Menu bar companion to ZnKeyboard for Android: polish or translate selected text in any app, using
-the same prompts and 14 target languages. Providers: Google Gemini (Flash-Lite models only) or any
-OpenAI-compatible API (OpenAI, DeepSeek, OpenRouter…), each with its own key.
+the same prompts and 14 target languages. Providers: Google Gemini (Flash-Lite models only) or
+DeepSeek (`deepseek-chat`), each with its own key.
 
 - **⌥⌘R** polish the selected text · **⌥⌘T** translate it into the target language (both changeable in Settings)
 - Select text in a text box (e.g. ⌘A) and 润色 | AI 翻译为 [EN ▾] appears beside it, where the app reports the selection.

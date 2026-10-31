@@ -6,8 +6,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="0.1.0"
-BUILD="1"
+VERSION="0.2.0"
+BUILD="2"
 APP="build/ZnKeyboard.app"
 
 swift build -c release --arch arm64
