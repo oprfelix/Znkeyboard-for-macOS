@@ -77,6 +77,80 @@ final class Controller {
         }
     }
 
+    /// Screenshot translation: drag over part of the screen, read its text on this Mac, and
+    /// translate it to read. Text already in the reading language (Chinese by default) goes to
+    /// English instead.
+    func runScreenshot() {
+        generation += 1
+        let current = generation
+        request = nil
+        panel.close(animated: false)
+        let actions = ReviewPanelController.Actions(
+            replace: { [weak self] _ in self?.panel.close() },
+            openSettings: { [weak self] in
+                self?.panel.close()
+                ScreenText.openPermissionSettings()
+            },
+            retry: { [weak self] in self?.rerun(mode: nil) },
+            changeLanguage: { [weak self] language in
+                Preferences.screenshotTarget = language
+                self?.rerun(mode: .read(language))
+            }
+        )
+        let target = Preferences.screenshotTarget
+
+        guard ScreenText.hasPermission else {
+            ScreenText.requestPermission()
+            panel.show(mode: .read(target), actions: actions)
+            panel.showError(L.needScreenRecording, offerSettings: true)
+            return
+        }
+        // Key and address problems are fixed in ZnKeyboard's own settings, before any dragging.
+        var settingsActions = actions
+        settingsActions.openSettings = { [weak self] in
+            self?.panel.close()
+            self?.openSettings()
+        }
+        let client: AIClient
+        do {
+            client = try Preferences.client()
+        } catch {
+            panel.show(mode: .read(target), actions: settingsActions)
+            panel.showError(L.badEndpoint, offerSettings: true)
+            return
+        }
+        guard !client.apiKey.isEmpty else {
+            panel.show(mode: .read(target), actions: settingsActions)
+            panel.showError(L.needKey, offerSettings: true)
+            return
+        }
+
+        Task {
+            guard let image = await ScreenText.captureRegion(), current == generation else { return }
+            var mode = RewriteMode.read(target)
+            panel.show(mode: mode, actions: actions)
+            let text: String
+            do {
+                text = try await ScreenText.recognize(image).trimmingCharacters(in: .whitespacesAndNewlines)
+            } catch {
+                guard current == generation else { return }
+                panel.showError(L.ocrFailed)
+                return
+            }
+            guard current == generation else { return }
+            guard !text.isEmpty else {
+                panel.showError(L.noTextFound)
+                return
+            }
+            if ["ZH", "TW"].contains(target.code), ScreenText.isMostlyChinese(text) {
+                mode = .read(Languages.language(code: "EN"))
+                panel.showLoading(mode: mode)
+            }
+            request = ("", text, "", client)
+            await rewrite(mode: mode, generation: current)
+        }
+    }
+
     /// Runs the kept text again: the same mode (nil) or another translation target.
     private func rerun(mode next: RewriteMode?) {
         guard request != nil else { return }
@@ -97,8 +171,12 @@ final class Controller {
         do {
             let result = try await request.client.rewrite(request.core, mode: mode)
             guard current == generation, panel.isVisible else { return }
-            // Keep the selection's surrounding spaces and line breaks so the paste fits back in.
-            panel.showResult(request.leading + result + request.trailing)
+            if case .read = mode {
+                panel.showResult(result, original: request.core)
+            } else {
+                // Keep the selection's surrounding spaces and line breaks so the paste fits back in.
+                panel.showResult(request.leading + result + request.trailing)
+            }
         } catch {
             guard current == generation, panel.isVisible else { return }
             let message = (error as? RewriteError)?.errorDescription

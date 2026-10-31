@@ -4,6 +4,8 @@ import Foundation
 enum RewriteMode {
     case polish
     case translate(TranslateLanguage)
+    /// Screenshot translation: a faithful translation to read, not a rewrite to send.
+    case read(TranslateLanguage)
 }
 
 enum RewriteError: LocalizedError {
@@ -114,7 +116,8 @@ struct AIClient {
               let payload = try? JSONSerialization.jsonObject(with: Data(Self.stripFences(content).utf8)) as? [String: Any],
               let result = (payload["text"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
               !result.isEmpty else { throw RewriteError.badResponse }
-        if result == text.trimmingCharacters(in: .whitespacesAndNewlines) { throw RewriteError.noChange }
+        // Text already in the reading language comes back as is, which is fine for reading.
+        if case .read = mode {} else if result == text.trimmingCharacters(in: .whitespacesAndNewlines) { throw RewriteError.noChange }
         return result
     }
 
@@ -161,6 +164,9 @@ struct AIClient {
 /// System prompts shipped in the app bundle, copied from ZnKeyboard for Android.
 enum Prompts {
     static func system(for mode: RewriteMode) -> String {
+        if case .read(let language) = mode {
+            return (load("read") ?? readFallback).replacingOccurrences(of: "{language}", with: language.name)
+        }
         var parts = [load("rewrite_base") ?? fallback]
         if case .translate(let language) = mode, let translate = load("translate") {
             // Last, so it overrides the language-matching rules above.
@@ -173,6 +179,11 @@ enum Prompts {
         guard let url = Bundle.main.url(forResource: name, withExtension: "md", subdirectory: "prompts") else { return nil }
         return try? String(contentsOf: url, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    private static let readFallback = """
+        Translate the user's text faithfully into {language}, keeping its meaning, facts and line breaks. \
+        Return a valid JSON object with exactly one field, `text`, containing only the translation.
+        """
 
     private static let fallback = """
         Polish the user's text while preserving its meaning, tone, and language. \

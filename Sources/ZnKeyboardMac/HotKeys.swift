@@ -2,18 +2,28 @@ import AppKit
 import Carbon.HIToolbox
 import Foundation
 
-/// The two actions a global shortcut can trigger.
+/// The actions a global shortcut can trigger.
 enum ShortcutAction: String, CaseIterable {
     case polish
     case translate
+    case screenshot
 
-    var hotKeyID: UInt32 { self == .polish ? 1 : 2 }
-    var other: ShortcutAction { self == .polish ? .translate : .polish }
+    var hotKeyID: UInt32 {
+        switch self {
+        case .polish: 1
+        case .translate: 2
+        case .screenshot: 3
+        }
+    }
+
+    var others: [ShortcutAction] { Self.allCases.filter { $0 != self } }
 
     var defaultShortcut: Shortcut {
-        self == .polish
-            ? Shortcut(keyCode: kVK_ANSI_R, modifiers: cmdKey | shiftKey, key: "R")
-            : Shortcut(keyCode: kVK_ANSI_T, modifiers: cmdKey | shiftKey, key: "T")
+        switch self {
+        case .polish: Shortcut(keyCode: kVK_ANSI_R, modifiers: cmdKey | shiftKey, key: "R")
+        case .translate: Shortcut(keyCode: kVK_ANSI_T, modifiers: cmdKey | shiftKey, key: "T")
+        case .screenshot: Shortcut(keyCode: kVK_ANSI_E, modifiers: cmdKey | shiftKey, key: "E")
+        }
     }
 }
 

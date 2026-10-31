@@ -124,6 +124,12 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue.code, forKey: targetKey) }
     }
 
+    /// The language screenshot translation reads into; Simplified Chinese until changed.
+    static var screenshotTarget: TranslateLanguage {
+        get { Languages.language(code: UserDefaults.standard.string(forKey: "screenshotTarget") ?? "ZH") }
+        set { UserDefaults.standard.set(newValue.code, forKey: "screenshotTarget") }
+    }
+
     static func apiKey(for provider: Provider) -> String { Keychain.read(account: provider.keychainAccount) ?? "" }
 
     static func setAPIKey(_ key: String, for provider: Provider) {

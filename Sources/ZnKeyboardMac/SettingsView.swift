@@ -18,6 +18,8 @@ struct SettingsView: View {
     @State private var caretToolbar = Preferences.caretToolbar
     @State private var uiLanguage = Preferences.uiLanguage
     @State private var trusted = TextBridge.isTrusted
+    @State private var screenTrusted = ScreenText.hasPermission
+    @State private var screenshotTarget = Preferences.screenshotTarget.code
     private let permissionTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -117,6 +119,16 @@ struct SettingsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
+                    Picker(L.screenshotTarget, selection: $screenshotTarget) {
+                        ForEach(Languages.all) { language in
+                            Text("\(language.code) · \(language.displayName)").tag(language.code)
+                        }
+                    }
+                    .onChange(of: screenshotTarget) { _, code in Preferences.screenshotTarget = Languages.language(code: code) }
+                    Text(L.screenshotTargetNote).font(.caption).foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
                     Toggle(L.caretToolbar, isOn: $caretToolbar)
                         .onChange(of: caretToolbar) { _, value in Preferences.caretToolbar = value }
                     Text(L.caretToolbarNote).font(.caption).foregroundStyle(.secondary)
@@ -129,6 +141,7 @@ struct SettingsView: View {
             Section {
                 LabeledContent(L.polishShortcut) { ShortcutRecorder(action: .polish, apply: applyShortcut) }
                 LabeledContent(L.translateShortcut) { ShortcutRecorder(action: .translate, apply: applyShortcut) }
+                LabeledContent(L.screenshotShortcut) { ShortcutRecorder(action: .screenshot, apply: applyShortcut) }
             } header: {
                 Text(L.shortcutsSection)
             } footer: {
@@ -148,12 +161,31 @@ struct SettingsView: View {
                         }
                     }
                 }
+                LabeledContent(L.screenRecording) {
+                    HStack(spacing: 8) {
+                        Label(screenTrusted ? L.granted : L.notGranted, systemImage: screenTrusted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                            .foregroundStyle(screenTrusted ? .green : .orange)
+                        if !screenTrusted {
+                            Button(L.grant) {
+                                ScreenText.requestPermission()
+                                ScreenText.openPermissionSettings()
+                            }
+                        }
+                    }
+                }
             } header: {
                 Text(L.permission)
             } footer: {
-                if !trusted {
-                    Text(L.accessibilityNote).font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    if !trusted {
+                        Text(L.accessibilityNote)
+                    }
+                    if !screenTrusted {
+                        Text(L.screenRecordingNote)
+                    }
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Section(L.generalSection) {
@@ -182,7 +214,10 @@ struct SettingsView: View {
         .frame(width: 500)
         .fixedSize(horizontal: false, vertical: true)
         .id(uiLanguage) // Rebuild every label in the new language.
-        .onReceive(permissionTimer) { _ in trusted = TextBridge.isTrusted }
+        .onReceive(permissionTimer) { _ in
+            trusted = TextBridge.isTrusted
+            screenTrusted = ScreenText.hasPermission
+        }
         .task(id: "\(provider.rawValue)|\(preset.rawValue)|\(baseURL)") {
             // A typed address settles before it is checked.
             if provider == .openAICompatible, preset == .custom { try? await Task.sleep(for: .milliseconds(600)) }

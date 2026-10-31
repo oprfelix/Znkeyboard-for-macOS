@@ -30,6 +30,24 @@ enum L {
     static var copy: String { t("复制", "Copy") }
     static var cancel: String { t("取消", "Cancel") }
     static var openSettings: String { t("打开设置", "Open Settings") }
+    static var screenshotTranslate: String { t("截图翻译", "Screenshot Translate") }
+    static var screenshotTranslateTo: String { t("截图翻译为", "Screenshot to") }
+    static var screenshotTarget: String { t("截图翻译成", "Screenshot translates to") }
+    static var screenshotTargetNote: String {
+        t("截到的文字如果本身就是中文，会翻译成英文。图片只在本机识别，不会上传，只有识别出的文字会发给服务商。",
+          "Chinese text is translated into English instead. The image is read on this Mac and never uploaded; only the recognised text goes to the provider.")
+    }
+    static var originalText: String { t("原文", "Original") }
+    static var copyOriginal: String { t("复制原文", "Copy Original") }
+    static var copyTranslation: String { t("复制译文", "Copy Translation") }
+    static var noTextFound: String { t("截图里没有识别到文字。", "No text found in the screenshot.") }
+    static var ocrFailed: String { t("识别文字失败，请再试一次。", "Couldn't read the text. Try again.") }
+    static var screenRecording: String { t("屏幕录制", "Screen Recording") }
+    static var screenRecordingNote: String { t("截图翻译需要这项权限。开启后请退出并重新打开 ZnKeyboard。", "Screenshot translation needs this. After turning it on, quit and reopen ZnKeyboard.") }
+    static var needScreenRecording: String {
+        t("截图翻译需要「屏幕录制」权限。请在系统设置里打开 ZnKeyboard，然后退出并重新打开 ZnKeyboard。",
+          "Screenshot translation needs Screen Recording access. Turn on ZnKeyboard in System Settings, then quit and reopen ZnKeyboard.")
+    }
     static var retry: String { t("重试", "Try Again") }
     static var regenerate: String { t("重新生成", "Regenerate") }
     static var closeHint: String { t("关闭（esc）", "Close (esc)") }
@@ -114,9 +132,10 @@ enum L {
     static var shortcutsSection: String { t("快捷键", "Shortcuts") }
     static var polishShortcut: String { t("润色", "Polish") }
     static var translateShortcut: String { t("AI 翻译", "Translate") }
+    static var screenshotShortcut: String { t("截图翻译", "Screenshot translate") }
     static var shortcutsNote: String {
-        t("选中文字后按快捷键即可，按钮不出现的 App 也能用。点击快捷键可以修改。",
-          "Select text and press a shortcut; it works even where the buttons don't appear. Click a shortcut to change it.")
+        t("选中文字后按快捷键即可，按钮不出现的 App 也能用；截图翻译按下后拖出要翻译的区域。点击快捷键可以修改。",
+          "Select text and press a shortcut; it works even where the buttons don't appear. For screenshot translate, drag over the area to translate. Click a shortcut to change it.")
     }
     static var pressShortcut: String { t("按下新快捷键…", "Press keys…") }
     static var shortcutHint: String { t("点击后按下新的组合键，Esc 取消", "Click, then press the new combination; Esc cancels") }

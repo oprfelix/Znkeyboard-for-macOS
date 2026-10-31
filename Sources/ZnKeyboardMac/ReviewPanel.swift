@@ -11,6 +11,8 @@ final class ReviewModel: ObservableObject {
 
     @Published var mode = RewriteMode.polish
     @Published var state = State.loading
+    /// Screenshot translation shows the recognised text above the translation.
+    @Published var original: String?
     /// Drives the appear animation.
     @Published var shown = false
     /// Whether there is a request to run again (not when the selection couldn't be read).
@@ -59,6 +61,7 @@ final class ReviewPanelController {
     func show(mode: RewriteMode, actions: Actions) {
         model.mode = mode
         model.state = .loading
+        model.original = nil
         model.canRetry = false
         model.onReplace = actions.replace
         model.onOpenSettings = actions.openSettings
@@ -81,9 +84,13 @@ final class ReviewPanelController {
         animateResize { $0.state = .loading }
     }
 
-    func showResult(_ text: String) {
+    /// [original]: the recognised text, for screenshot translation.
+    func showResult(_ text: String, original: String? = nil) {
         model.canRetry = true
-        animateResize { $0.state = .result(text) }
+        animateResize {
+            $0.original = original
+            $0.state = .result(text)
+        }
     }
 
     func showError(_ message: String, offerSettings: Bool = false, canRetry: Bool = false) {
@@ -167,6 +174,9 @@ private struct ReviewView: View {
             case .loading:
                 ShimmerLines()
             case .result(let text):
+                if let original = model.original {
+                    originalSection(original)
+                }
                 ScrollView {
                     Text(text)
                         .font(.body)
@@ -176,7 +186,11 @@ private struct ReviewView: View {
                 }
                 .frame(maxHeight: 360)
                 .fixedSize(horizontal: false, vertical: true)
-                resultActions(text)
+                if case .read = model.mode {
+                    readActions(text)
+                } else {
+                    resultActions(text)
+                }
             case .error(let message, let offerSettings):
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -218,27 +232,14 @@ private struct ReviewView: View {
             case .polish:
                 Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
                 Text(L.polish).font(.headline)
+            case .read(let language):
+                Image(systemName: "text.viewfinder").foregroundStyle(Color.accentColor)
+                Text(L.screenshotTranslateTo).font(.headline)
+                languageMenu(language)
             case .translate(let language):
                 Image(systemName: "translate").foregroundStyle(Color.accentColor)
                 Text(L.translateShort).font(.headline)
-                Menu {
-                    ForEach(Languages.all) { option in
-                        Button {
-                            model.onChangeLanguage(option)
-                        } label: {
-                            if option == language {
-                                Label("\(option.code) · \(option.displayName)", systemImage: "checkmark")
-                            } else {
-                                Text("\(option.code) · \(option.displayName)")
-                            }
-                        }
-                    }
-                } label: {
-                    Text(language.displayName).font(.headline)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .disabled(model.state == .loading)
+                languageMenu(language)
             }
             Spacer()
             Button(action: model.onClose) {
@@ -252,6 +253,76 @@ private struct ReviewView: View {
             .keyboardShortcut(.cancelAction)
             .help(L.closeHint)
         }
+    }
+
+    /// The target language as a menu; choosing one translates the same text again.
+    private func languageMenu(_ language: TranslateLanguage) -> some View {
+        Menu {
+            ForEach(Languages.all) { option in
+                Button {
+                    model.onChangeLanguage(option)
+                } label: {
+                    if option == language {
+                        Label("\(option.code) · \(option.displayName)", systemImage: "checkmark")
+                    } else {
+                        Text("\(option.code) · \(option.displayName)")
+                    }
+                }
+            }
+        } label: {
+            Text(language.displayName).font(.headline)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .disabled(model.state == .loading)
+    }
+
+    /// The recognised text, smaller and muted, so the translation stays the focus.
+    private func originalSection(_ original: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(L.originalText).font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                Text(original)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 120)
+            .fixedSize(horizontal: false, vertical: true)
+            Divider().padding(.top, 4)
+        }
+    }
+
+    /// Screenshot translation: nothing to replace, so the main action copies the translation.
+    private func readActions(_ text: String) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(model.original ?? "", forType: .string)
+                model.onClose()
+            } label: {
+                Label(L.copyOriginal, systemImage: "text.quote")
+            }
+            Button(action: model.onRetry) {
+                Image(systemName: "arrow.clockwise")
+            }
+            .help(L.regenerate)
+            Spacer()
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(text, forType: .string)
+                model.onClose()
+            } label: {
+                HStack(spacing: 6) {
+                    Text(L.copyTranslation)
+                    Text("↩︎").opacity(0.7)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
+        }
+        .controlSize(.large)
     }
 
     private func resultActions(_ text: String) -> some View {

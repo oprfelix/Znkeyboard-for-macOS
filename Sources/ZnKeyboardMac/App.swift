@@ -54,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             switch action {
             case .polish: self?.controller.run(.polish)
             case .translate: self?.controller.run(.translate(Preferences.translateTarget))
+            case .screenshot: self?.controller.runScreenshot()
             }
         }
     }
@@ -61,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// Switches [action] to [shortcut] (its default when nil). On failure the old one stays.
     private func applyShortcut(_ action: ShortcutAction, _ shortcut: Shortcut?) -> ShortcutResult {
         let next = shortcut ?? action.defaultShortcut
-        if next.collides(with: Preferences.shortcut(for: action.other)) { return .usedByOther }
+        if action.others.contains(where: { next.collides(with: Preferences.shortcut(for: $0)) }) { return .usedByOther }
         let previous = Preferences.shortcut(for: action)
         guard registerHotKey(action, next) else {
             registerHotKey(action, previous)
@@ -85,6 +86,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         translate.image = Self.symbol("translate")
         Self.showShortcut(Preferences.shortcut(for: .translate), on: translate)
         menu.addItem(translate)
+
+        let screenshot = NSMenuItem(title: L.screenshotTranslate, action: #selector(screenshotTranslate), keyEquivalent: "")
+        screenshot.image = Self.symbol("text.viewfinder")
+        Self.showShortcut(Preferences.shortcut(for: .screenshot), on: screenshot)
+        menu.addItem(screenshot)
 
         let languages = NSMenu()
         for language in Languages.all {
@@ -145,6 +151,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     @objc private func checkForUpdates() { Updates.check() }
+
+    /// Waits for the menu to close so it isn't in the screenshot.
+    @objc private func screenshotTranslate() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in self?.controller.runScreenshot() }
+    }
 
     @objc private func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
