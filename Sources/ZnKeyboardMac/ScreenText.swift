@@ -55,7 +55,7 @@ enum ScreenText {
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
             request.automaticallyDetectsLanguage = true
-            let preferred = ["zh-Hans", "zh-Hant", "en-US", "ja-JP", "ko-KR", "fr-FR", "de-DE", "es-ES", "pt-BR", "it-IT", "ru-RU", "vi-VT", "th-TH", "ar-SA"]
+            let preferred = ["zh-Hans", "zh-Hant", "en-US", "ja-JP", "ko-KR", "fr-FR", "de-DE", "es-ES", "pt-BR", "it-IT", "ru-RU", "vi-VN", "th-TH", "ar-SA"]
             if let supported = try? request.supportedRecognitionLanguages() {
                 request.recognitionLanguages = preferred.filter(supported.contains)
             }

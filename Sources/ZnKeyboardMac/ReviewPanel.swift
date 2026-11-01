@@ -32,6 +32,8 @@ final class ReviewPanelController {
     private let model = ReviewModel()
     /// Set while a fade-out runs; a show in the meantime cancels the pending orderOut.
     private var closing: UUID?
+    /// Near the bottom of the screen the card opens above its anchor and grows upward.
+    private var growsUp = false
     /// Watches clicks in other apps while a screenshot translation is shown.
     private var outsideClickMonitor: Any?
     private lazy var panel: NSPanel = {
@@ -62,7 +64,8 @@ final class ReviewPanelController {
         var changeLanguage: (TranslateLanguage) -> Void
     }
 
-    func show(mode: RewriteMode, actions: Actions) {
+    /// [anchor]: the selected text on screen, when the app reports it; otherwise the pointer is used.
+    func show(mode: RewriteMode, actions: Actions, anchor: NSRect? = nil) {
         model.mode = mode
         model.state = .loading
         model.original = nil
@@ -75,7 +78,7 @@ final class ReviewPanelController {
         closing = nil
         panel.alphaValue = 1
         model.shown = false
-        place()
+        place(anchor: anchor)
         panel.makeKeyAndOrderFront(nil)
         watchOutsideClicks(mode: mode)
         DispatchQueue.main.async { [model] in
@@ -148,19 +151,34 @@ final class ReviewPanelController {
         outsideClickMonitor = nil
     }
 
-    /// Top-left corner just below and right of the pointer, kept on screen.
-    private func place() {
-        resize()
+    /// Below the selection (or the pointer) and to its right, or above it when there isn't room
+    /// below for a full result; kept on screen.
+    private func place(anchor: NSRect?) {
         let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
+        let target = anchor ?? NSRect(x: mouse.x + 12, y: mouse.y - 16, width: 0, height: 24)
+        let screen = NSScreen.screens.first { $0.frame.intersects(target.insetBy(dx: -1, dy: -1)) } ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? .zero
+        let roomBelow = target.minY - 6 - visible.minY
+        let roomAbove = visible.maxY - target.maxY - 6
+        growsUp = roomBelow < Self.roomForResult && roomAbove > roomBelow
+        resize()
         var frame = panel.frame
         // The card sits inside a transparent margin that holds its shadow.
-        frame.origin = NSPoint(x: mouse.x + 12 - Self.margin, y: mouse.y - 16 - frame.height + Self.margin)
-        if let visible = screen?.visibleFrame {
-            frame.origin.x = min(max(frame.origin.x, visible.minX + 8 - Self.margin), visible.maxX - frame.width - 8 + Self.margin)
-            frame.origin.y = min(max(frame.origin.y, visible.minY + 8 - Self.margin), visible.maxY - frame.height - 8 + Self.margin)
-        }
-        panel.setFrame(frame, display: true)
+        frame.origin.x = target.minX - Self.margin
+        frame.origin.y = growsUp ? target.maxY + 6 - Self.margin : target.minY - 6 - frame.height + Self.margin
+        panel.setFrame(clamped(frame, to: visible), display: true)
+    }
+
+    /// A typical result's height; with less room than this below, the card opens upward.
+    private static let roomForResult: CGFloat = 320
+
+    /// Moved (not resized) so the card itself, not its shadow margin, stays inside [visible].
+    private func clamped(_ frame: NSRect, to visible: NSRect) -> NSRect {
+        guard !visible.isEmpty else { return frame }
+        var frame = frame
+        frame.origin.x = min(max(frame.origin.x, visible.minX + 8 - Self.margin), visible.maxX - frame.width - 8 + Self.margin)
+        frame.origin.y = min(max(frame.origin.y, visible.minY + 8 - Self.margin), visible.maxY - frame.height - 8 + Self.margin)
+        return frame
     }
 
     private func animateResize(_ change: (ReviewModel) -> Void) {
@@ -168,7 +186,8 @@ final class ReviewPanelController {
         resize(animate: true)
     }
 
-    /// Grows or shrinks to the content, keeping the top edge where it was.
+    /// Grows or shrinks to the content, keeping the top edge where it was (the bottom edge when it
+    /// opened upward), and moves back on screen if it would leave it.
     private func resize(animate: Bool = false) {
         guard let content = panel.contentView else { return }
         content.layoutSubtreeIfNeeded()
@@ -176,7 +195,10 @@ final class ReviewPanelController {
         var frame = panel.frame
         let top = frame.maxY
         frame.size = NSSize(width: Self.width + 2 * Self.margin, height: min(max(size.height, 96 + 2 * Self.margin), 560 + 2 * Self.margin))
-        frame.origin.y = top - frame.height
+        if !growsUp { frame.origin.y = top - frame.height }
+        if panel.isVisible, let visible = (panel.screen ?? NSScreen.main)?.visibleFrame {
+            frame = clamped(frame, to: visible)
+        }
         panel.setFrame(frame, display: true, animate: animate && panel.isVisible)
     }
 

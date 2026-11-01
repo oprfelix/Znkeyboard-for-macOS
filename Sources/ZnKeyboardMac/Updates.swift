@@ -13,6 +13,11 @@ enum Updates {
     static func check() {
         Task { @MainActor in
             let latest = await latestReleaseVersion()
+            // A menu-bar-only app is often refused activation, leaving the alert behind other windows;
+            // as a regular app for the moment, it comes to the front (as Settings does).
+            let wasAccessory = NSApp.activationPolicy() == .accessory
+            if wasAccessory { NSApp.setActivationPolicy(.regular) }
+            defer { if wasAccessory { NSApp.setActivationPolicy(.accessory) } }
             NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
             let current = currentVersion

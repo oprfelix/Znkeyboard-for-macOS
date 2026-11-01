@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import os
 
 /// The text field the user is typing in, with its selection on screen. Built only when the app
 /// exposes it through Accessibility; otherwise there is nothing to anchor the toolbar to.
@@ -48,17 +49,22 @@ struct FocusedField {
         return nil
     }
 
-    enum SelectionState { case notEditable, empty, selected, unknown }
+    /// `elsewhere`: the focused field isn't under the mouse, so the selection in it is an old one.
+    enum SelectionState { case notEditable, empty, selected, unknown, elsewhere }
 
     /// Whether the focused field is editable and has a selection, without needing its position.
     /// Chrome often reports neither range nor bounds after a mouse selection: that is `unknown`.
-    static func selectionState(in app: NSRunningApplication) -> SelectionState {
+    /// [points]: where a mouse selection began and ended (AppKit screen coordinates).
+    static func selectionState(in app: NSRunningApplication, mouseAt points: [NSPoint]) -> SelectionState {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(appElement, 0.15)
         guard let element = appElement.element(kAXFocusedUIElementAttribute) else { return .notEditable }
         let role = element.string(kAXRoleAttribute) ?? "?"
         guard element.string(kAXSubroleAttribute) != kAXSecureTextFieldSubrole as String,
               isEditable(element, role: role) else { return .notEditable }
+        if let frame = frame(of: element), !points.contains(where: { frame.insetBy(dx: -4, dy: -4).contains($0) }) {
+            return .elsewhere
+        }
         if let range = element.range(kAXSelectedTextRangeAttribute) { return range.length > 0 ? .selected : .empty }
         if let selected = element.string(kAXSelectedTextAttribute), !selected.isEmpty { return .selected }
         return .unknown
@@ -98,6 +104,18 @@ struct FocusedField {
         var rect = CGRect.zero
         guard AXValueGetValue(result as! AXValue, .cgRect, &rect) else { return nil }
         return rect
+    }
+
+    /// The element's frame in AppKit screen coordinates, when it reports one.
+    private static func frame(of element: AXUIElement) -> NSRect? {
+        guard let position = element.value(kAXPositionAttribute), let size = element.value(kAXSizeAttribute),
+              CFGetTypeID(position) == AXValueGetTypeID(), CFGetTypeID(size) == AXValueGetTypeID(),
+              let primary = NSScreen.screens.first else { return nil }
+        var origin = CGPoint.zero
+        var extent = CGSize.zero
+        guard AXValueGetValue(position as! AXValue, .cgPoint, &origin), AXValueGetValue(size as! AXValue, .cgSize, &extent),
+              extent.width > 0, extent.height > 0 else { return nil }
+        return NSRect(x: origin.x, y: primary.frame.maxY - origin.y - extent.height, width: extent.width, height: extent.height)
     }
 
     /// From Accessibility's top-left origin to AppKit's bottom-left one; nil if not a plausible caret.
@@ -157,8 +175,17 @@ extension AXUIElement {
 enum CaretLog {
     private static var last = ""
 
+    /// Also in the system log (Console, `log show --predicate 'subsystem == "dev.zain.znkeyboard.mac"'`).
+    private static let logger = Logger(subsystem: "dev.zain.znkeyboard.mac", category: "selection")
+
+    /// One line at launch, whatever the setting, so it's clear whether notes are being kept.
+    static func noteLaunch() {
+        logger.notice("launched, debugCaret \(UserDefaults.standard.bool(forKey: "debugCaret"), privacy: .public)")
+    }
+
     static func note(_ message: String) {
         guard UserDefaults.standard.bool(forKey: "debugCaret"), message != last else { return }
+        logger.notice("\(message, privacy: .public)")
         last = message
         let app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"
         let line = "\(Date()) \(app) \(message)\n"

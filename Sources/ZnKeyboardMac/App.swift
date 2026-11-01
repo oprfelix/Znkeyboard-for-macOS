@@ -35,8 +35,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         item.menu = menu
         statusItem = item
 
+        CaretLog.noteLaunch()
         for action in ShortcutAction.allCases {
-            registerHotKey(action, Preferences.shortcut(for: action))
+            let ok = registerHotKey(action, Preferences.shortcut(for: action))
+            CaretLog.note("shortcut \(action.rawValue) \(Preferences.shortcut(for: action).display) registered: \(ok)")
         }
 
         caretToolbar.isSuspended = { [weak self] in self?.controller.isPanelVisible ?? false }

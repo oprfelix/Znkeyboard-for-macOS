@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 /// Shows 润色 | AI 翻译为 [EN ▾] next to text the user selects in an editable field. Keyboard
@@ -19,6 +20,10 @@ final class CaretToolbar {
     private var accessibilityEnabledPIDs = Set<pid_t>()
     private var monitors: [Any] = []
     private var mouseDownPoint: NSPoint?
+    /// When ⌘A or ⇧ with an arrow, Home, End or Page key was last pressed. A selection that appears
+    /// without one was made by the app (the address bar selecting its URL, Finder's rename, a Save
+    /// dialog's file name) and gets no toolbar.
+    private var lastSelectionKey = Date.distantPast
     /// Set while the toolbar shows for a mouse selection; typing, clicking or switching apps ends it.
     private var mouseAnchorPID: pid_t?
 
@@ -64,10 +69,23 @@ final class CaretToolbar {
             NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
                 MainActor.assumeIsolated { self?.mouseUp(clickCount: event.clickCount) }
             },
-            NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] _ in
-                MainActor.assumeIsolated { self?.endMouseAnchor() }
+            NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                MainActor.assumeIsolated {
+                    if Self.selectsText(event) { self?.lastSelectionKey = Date() }
+                    self?.endMouseAnchor()
+                }
             },
         ].compactMap { $0 }
+    }
+
+    private static let extendKeys: Set<Int> = [
+        kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow, kVK_Home, kVK_End, kVK_PageUp, kVK_PageDown,
+    ]
+
+    private static func selectsText(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        if Int(event.keyCode) == kVK_ANSI_A, flags == .command { return true }
+        return flags.contains(.shift) && extendKeys.contains(Int(event.keyCode))
     }
 
     private func mouseDown() {
@@ -78,9 +96,11 @@ final class CaretToolbar {
     /// A drag, double click or triple click in an editable field likely selected text there.
     private func mouseUp(clickCount: Int) {
         let point = NSEvent.mouseLocation
-        let dragged = mouseDownPoint.map { hypot($0.x - point.x, $0.y - point.y) >= 6 } ?? false
+        let start = mouseDownPoint
+        mouseDownPoint = nil
+        let dragged = start.map { hypot($0.x - point.x, $0.y - point.y) >= 6 } ?? false
         // Screen y grows upward: a drag that ended higher than it began selected the lines below.
-        let draggedUp = dragged && (mouseDownPoint.map { point.y > $0.y + 6 } ?? false)
+        let draggedUp = dragged && (start.map { point.y > $0.y + 6 } ?? false)
         guard dragged || clickCount >= 2 else { return }
         // Let the app finish updating its selection first.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
@@ -88,7 +108,9 @@ final class CaretToolbar {
                   let app = NSWorkspace.shared.frontmostApplication,
                   app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
             self.enableAccessibility(for: app)
-            let state = FocusedField.selectionState(in: app)
+            // The field must be where the mouse was: an old selection stays put while a scrollbar or
+            // title bar is dragged.
+            let state = FocusedField.selectionState(in: app, mouseAt: [point, start].compactMap { $0 })
             CaretLog.note("mouse selection: \(state)")
             guard state == .selected || state == .unknown else { return }
             self.mouseAnchorPID = app.processIdentifier
@@ -148,7 +170,8 @@ final class CaretToolbar {
             hide()
             return
         }
-        guard Date().timeIntervalSince(unchangedSince) >= Self.settleDelay, !panel.isVisible || hiding != nil else { return }
+        guard Date().timeIntervalSince(unchangedSince) >= Self.settleDelay, !panel.isVisible || hiding != nil,
+              Date().timeIntervalSince(lastSelectionKey) < 2 else { return }
         model.language = Preferences.translateTarget.code
         show(below: caret)
     }

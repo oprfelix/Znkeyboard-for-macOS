@@ -15,6 +15,7 @@ final class Controller {
     var isPanelVisible: Bool { panel.isVisible }
 
     func run(_ mode: RewriteMode) {
+        CaretLog.note("shortcut pressed (#\(generation + 1))")
         generation += 1
         let current = generation
         request = nil
@@ -24,9 +25,10 @@ final class Controller {
         let sourceApp = NSWorkspace.shared.frontmostApplication
         let actions = ReviewPanelController.Actions(
             replace: { [weak self] text in
+                let original = self?.request.map { $0.leading + $0.core + $0.trailing } ?? ""
                 self?.panel.close(animated: false)
                 sourceApp?.activate()
-                Task { await TextBridge.replaceSelection(with: text) }
+                Task { await TextBridge.replaceSelection(original, with: text) }
             },
             openSettings: { [weak self] in
                 self?.panel.close()
@@ -38,7 +40,9 @@ final class Controller {
                 self?.rerun(mode: .translate(language))
             }
         )
-        let showPanel = { [weak self] in self?.panel.show(mode: mode, actions: actions) }
+        // Beside the selection when the app says where it is (⌘A leaves the pointer anywhere).
+        let anchor = sourceApp.flatMap { FocusedField.current(in: $0) }.flatMap { $0.hasSelection ? $0.caretRect : nil }
+        let showPanel = { [weak self] in self?.panel.show(mode: mode, actions: actions, anchor: anchor) }
 
         guard TextBridge.isTrusted else {
             // The button goes straight to System Settings → Accessibility, where ZnKeyboard is listed.
@@ -67,10 +71,18 @@ final class Controller {
         }
 
         Task {
-            // The shortcut's modifiers may still be held; let it go before simulating ⌘C. The panel only
+            // The shortcut's modifiers may still be held; let them go before simulating ⌘C. The panel only
             // appears after the selection is read: once it takes focus, ⌘C would copy from it instead.
-            try? await Task.sleep(nanoseconds: 150_000_000)
-            let selection = await TextBridge.selectedText()
+            CaretLog.note("shortcut #\(current): reading the selection")
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            await TextBridge.waitForModifiersReleased()
+            var selection = await TextBridge.selectedText()
+            // Right after ⌘A some apps haven't settled their selection yet: look once more.
+            if selection?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true, current == generation {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                selection = await TextBridge.selectedText()
+            }
+            CaretLog.note("shortcut #\(current): \(selection.map { "\($0.count) characters" } ?? "nothing")")
             guard current == generation else { return }
             showPanel()
             guard let selection, !selection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -87,6 +99,7 @@ final class Controller {
     /// translate it to read. Text already in the reading language (Chinese by default) goes to
     /// English instead.
     func runScreenshot() {
+        guard !capturing else { return }
         generation += 1
         let current = generation
         request = nil
@@ -131,8 +144,11 @@ final class Controller {
             return
         }
 
+        capturing = true
         Task {
-            guard let image = await ScreenText.captureRegion(), current == generation else { return }
+            let image = await ScreenText.captureRegion()
+            capturing = false
+            guard let image, current == generation else { return }
             var mode = RewriteMode.read(target)
             panel.show(mode: mode, actions: actions)
             let text: String
@@ -168,6 +184,8 @@ final class Controller {
     }
 
     private var lastMode = RewriteMode.polish
+    /// Set while macOS's screenshot selection is up; another ⇧⌘E then does nothing.
+    private var capturing = false
 
     private func rewrite(mode: RewriteMode, generation current: Int) async {
         guard let request else { return }
