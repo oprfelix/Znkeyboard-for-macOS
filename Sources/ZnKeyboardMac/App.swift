@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         statusItem = item
 
         CaretLog.noteLaunch()
+        Updates.startAutomaticChecks()
         for action in ShortcutAction.allCases {
             let ok = registerHotKey(action, Preferences.shortcut(for: action))
             CaretLog.note("shortcut \(action.rawValue) \(Preferences.shortcut(for: action).display) registered: \(ok)")
@@ -117,6 +118,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let settings = NSMenuItem(title: L.settings, action: #selector(openSettings), keyEquivalent: ",")
         settings.image = Self.symbol("gearshape")
         menu.addItem(settings)
+        if let release = Updates.available {
+            let install = NSMenuItem(title: L.newVersionMenu(release.version), action: #selector(installUpdate), keyEquivalent: "")
+            install.image = Self.symbol("arrow.down.circle.fill")
+            menu.addItem(install)
+        }
         let updates = NSMenuItem(title: L.checkForUpdates, action: #selector(checkForUpdates), keyEquivalent: "")
         updates.image = Self.symbol("arrow.down.circle")
         menu.addItem(updates)
@@ -165,6 +171,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     @objc private func checkForUpdates() { Updates.check() }
+
+    @objc private func installUpdate() {
+        if let release = Updates.available { Updates.install(release) }
+    }
 
     /// Waits for the menu to close so it isn't in the screenshot.
     @objc private func screenshotTranslate() {

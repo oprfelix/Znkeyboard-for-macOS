@@ -37,6 +37,9 @@ enum Preferences {
     private static let targetKey = "translateTarget"
     private static let uiLanguageKey = "uiLanguage"
     private static let caretToolbarKey = "caretToolbar"
+    private static let automaticUpdatesKey = "automaticUpdateChecks"
+    private static let lastUpdateCheckKey = "lastUpdateCheck"
+    private static let notifiedUpdateKey = "notifiedUpdate"
     private static let clickOutsideKey = "screenshotClickOutsideCloses"
 
     static var provider: Provider {
@@ -54,6 +57,23 @@ enum Preferences {
     static var screenshotClickOutsideCloses: Bool {
         get { UserDefaults.standard.object(forKey: clickOutsideKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: clickOutsideKey) }
+    }
+
+    /// A daily look for a new release. On by default.
+    static var automaticUpdateChecks: Bool {
+        get { UserDefaults.standard.object(forKey: automaticUpdatesKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: automaticUpdatesKey) }
+    }
+
+    static var lastUpdateCheck: Date {
+        get { UserDefaults.standard.object(forKey: lastUpdateCheckKey) as? Date ?? .distantPast }
+        set { UserDefaults.standard.set(newValue, forKey: lastUpdateCheckKey) }
+    }
+
+    /// The newest version already offered on its own, so each is offered once.
+    static var notifiedUpdate: String? {
+        get { UserDefaults.standard.string(forKey: notifiedUpdateKey) }
+        set { UserDefaults.standard.set(newValue, forKey: notifiedUpdateKey) }
     }
 
     /// "system", "zh" or "en".

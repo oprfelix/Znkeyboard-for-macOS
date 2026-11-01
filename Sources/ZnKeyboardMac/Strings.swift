@@ -57,9 +57,23 @@ enum L {
     static var checkForUpdates: String { t("检查更新…", "Check for Updates…") }
     static func updateAvailable(_ version: String) -> String { t("有新版本 \(version)", "ZnKeyboard \(version) is available") }
     static func updateAvailableNote(_ current: String) -> String {
-        t("你正在使用 \(current)。下载后把新版拖进「应用程序」替换即可，设置和 API Key 都会保留。",
-          "You have \(current). Download it and drag it into Applications to replace this one; your settings and API key stay.")
+        t("你正在使用 \(current)。点「立即更新」会自动下载并替换，完成后重新打开 ZnKeyboard，设置、API Key 和权限都会保留。",
+          "You have \(current). Update Now downloads and installs it, then reopens ZnKeyboard; your settings, API key and permissions stay.")
     }
+    static var updateNow: String { t("立即更新", "Update Now") }
+    static func newVersionMenu(_ version: String) -> String { t("有新版本 \(version)，立即更新…", "Update to \(version)…") }
+    static func downloadingUpdate(_ version: String) -> String { t("正在下载 ZnKeyboard \(version)…", "Downloading ZnKeyboard \(version)…") }
+    static var installingUpdate: String { t("正在安装，完成后会自动重新打开…", "Installing; ZnKeyboard will reopen…") }
+    static var updateFailed: String { t("更新没有完成", "The update didn't finish") }
+    static func updateFailedNote(_ reason: String) -> String {
+        t("\(reason)\n当前版本没有改动。可以到下载页手动安装新版本。", "\(reason)\nNothing was changed. You can install the new version from the download page.")
+    }
+    static var downloadFailed: String { t("下载失败，请检查网络。", "The download failed. Check your connection.") }
+    static var updateDamaged: String { t("下载的安装包不完整。", "The downloaded package is incomplete.") }
+    static var updateNotTrusted: String { t("新版本的签名校验没有通过，为安全起见没有安装。", "The new version's signature didn't check out, so it wasn't installed.") }
+    static var updateNoPermission: String { t("没有权限替换「应用程序」里的 ZnKeyboard。", "ZnKeyboard in Applications couldn't be replaced (no permission).") }
+    static var automaticUpdates: String { t("自动检查更新", "Check for updates automatically") }
+    static var automaticUpdatesNote: String { t("每天检查一次，有新版本时提醒你，点一下即可更新。", "Checks once a day and offers new versions; one click installs them.") }
     static var download: String { t("下载", "Download") }
     static var later: String { t("以后再说", "Later") }
     static func upToDate(_ current: String) -> String { t("ZnKeyboard \(current) 已是最新版本", "ZnKeyboard \(current) is up to date") }
