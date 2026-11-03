@@ -32,10 +32,10 @@ enum L {
     static var openSettings: String { t("打开设置", "Open Settings") }
     static var screenshotTranslate: String { t("截图翻译", "Screenshot Translate") }
     static var screenshotTranslateTo: String { t("截图翻译为", "Screenshot to") }
-    static var screenshotTarget: String { t("截图翻译成", "Screenshot translates to") }
+    static var screenshotTarget: String { t("划词和截图翻译成", "Reading and screenshots translate to") }
     static var screenshotTargetNote: String {
-        t("截到的文字如果本身就是中文，会翻译成英文。图片只在本机识别，不会上传，只有识别出的文字会发给服务商。",
-          "Chinese text is translated into English instead. The image is read on this Mac and never uploaded; only the recognised text goes to the provider.")
+        t("划词翻译和截图翻译共用；原文如果本身就是中文，会翻译成英文。图片只在本机识别，不会上传，只有识别出的文字会发给服务商。",
+          "Shared by reading and screenshot translation; Chinese text is translated into English instead. Images are read on this Mac and never uploaded; only the recognised text goes to the provider.")
     }
     static var originalText: String { t("原文", "Original") }
     static var copyOriginal: String { t("复制原文", "Copy Original") }
@@ -148,10 +148,6 @@ enum L {
     static var readingToolbarNote: String {
         t("在网页、文档里用鼠标选中文字后，旁边会出现「翻译为」按钮。",
           "Select text on a web page or in a document with the mouse, and a Translate button appears beside it.")
-    }
-    static var readingTarget: String { t("划词翻译成", "Selected text translates to") }
-    static var readingTargetNote: String {
-        t("设为中文时，选中的中文会翻译成英文。", "Set to Chinese, Chinese text goes to English instead.")
     }
     static var readShort: String { t("翻译为", "Translate to") }
     static var pinCard: String { t("固定：点击别处时不关闭", "Pin: stay open when clicking elsewhere") }

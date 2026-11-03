@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         caretToolbar.onPolish = { [weak self] in self?.controller.run(.polish) }
         caretToolbar.onTranslate = { [weak self] in self?.controller.run(.translate(Preferences.translateTarget)) }
-        caretToolbar.onRead = { [weak self] in self?.controller.run(.read(Preferences.readingTarget, screenshot: false)) }
+        caretToolbar.onRead = { [weak self] in self?.controller.run(.read(Preferences.screenshotTarget, screenshot: false)) }
         caretToolbar.start()
 
         // First run: nothing works without a key and Accessibility, so start where they're set.

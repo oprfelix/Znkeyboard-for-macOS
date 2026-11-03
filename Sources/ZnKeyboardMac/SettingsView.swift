@@ -17,7 +17,6 @@ struct SettingsView: View {
     @State private var target = Preferences.translateTarget.code
     @State private var caretToolbar = Preferences.caretToolbar
     @State private var readingToolbar = Preferences.readingToolbar
-    @State private var readingTarget = Preferences.readingTarget.code
     @State private var uiLanguage = Preferences.uiLanguage
     @State private var automaticUpdates = Preferences.automaticUpdateChecks
     @State private var trusted = TextBridge.isTrusted
@@ -205,16 +204,6 @@ struct SettingsView: View {
                     Toggle(L.readingToolbar, isOn: $readingToolbar)
                         .onChange(of: readingToolbar) { _, value in Preferences.readingToolbar = value }
                     Text(L.readingToolbarNote).font(.caption).foregroundStyle(.secondary)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Picker(L.readingTarget, selection: $readingTarget) {
-                        ForEach(Languages.all) { language in
-                            Text("\(language.code) · \(language.displayName)").tag(language.code)
-                        }
-                    }
-                    .onChange(of: readingTarget) { _, code in Preferences.readingTarget = Languages.language(code: code) }
-                    Text(L.readingTargetNote).font(.caption).foregroundStyle(.secondary)
                 }
 
             }

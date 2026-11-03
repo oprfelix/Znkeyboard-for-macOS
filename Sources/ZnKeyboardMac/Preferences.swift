@@ -158,13 +158,8 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue.code, forKey: targetKey) }
     }
 
-    /// The language the reading button translates into, on its own; English until changed.
-    static var readingTarget: TranslateLanguage {
-        get { Languages.language(code: UserDefaults.standard.string(forKey: "readingTarget") ?? "EN") }
-        set { UserDefaults.standard.set(newValue.code, forKey: "readingTarget") }
-    }
-
-    /// The language screenshot translation reads into; Simplified Chinese until changed.
+    /// The language translations to read go into, for text selected while reading and for screenshots;
+    /// Simplified Chinese until changed. Kept under its 0.2 name.
     static var screenshotTarget: TranslateLanguage {
         get { Languages.language(code: UserDefaults.standard.string(forKey: "screenshotTarget") ?? "ZH") }
         set { UserDefaults.standard.set(newValue.code, forKey: "screenshotTarget") }

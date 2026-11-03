@@ -6,7 +6,7 @@ import SwiftUI
 /// selections (⌘A, ⇧-arrows) are found through Accessibility and the toolbar sits under them;
 /// mouse selections (drag, double or triple click) put it at the pointer, since browsers often
 /// don't report where a mouse selection is. Text selected with the mouse while reading (a web page,
-/// a document) gets 翻译为 [EN ▾] alone, with its own language. Nothing is read or sent until a
+/// a document) gets 翻译为 [ZH ▾] alone, into the reading language screenshots use. Nothing is read or sent until a
 /// button is clicked.
 @MainActor
 final class CaretToolbar {
@@ -125,7 +125,7 @@ final class CaretToolbar {
             guard forReading || (editing && (state == .selected || state == .unknown)) else { return }
             self.mouseAnchorPID = app.processIdentifier
             self.model.reading = forReading
-            self.model.language = (forReading ? Preferences.readingTarget : Preferences.translateTarget).code
+            self.model.language = (forReading ? Preferences.screenshotTarget : Preferences.translateTarget).code
             self.show(atPointer: point, above: draggedUp)
         }
     }
@@ -232,7 +232,7 @@ final class CaretToolbar {
     private func chooseLanguage() {
         let menu = NSMenu()
         let reading = model.reading
-        let current = reading ? Preferences.readingTarget : Preferences.translateTarget
+        let current = reading ? Preferences.screenshotTarget : Preferences.translateTarget
         for language in Languages.all {
             let item = NSMenuItem(title: "\(language.code) · \(language.displayName)", action: #selector(LanguageMenuTarget.choose(_:)), keyEquivalent: "")
             item.target = LanguageMenuTarget.shared
@@ -241,7 +241,7 @@ final class CaretToolbar {
             menu.addItem(item)
         }
         LanguageMenuTarget.shared.onChoose = { [weak self] code in
-            if reading { Preferences.readingTarget = Languages.language(code: code) } else { Preferences.translateTarget = Languages.language(code: code) }
+            if reading { Preferences.screenshotTarget = Languages.language(code: code) } else { Preferences.translateTarget = Languages.language(code: code) }
             self?.model.language = code
         }
         menu.popUp(positioning: nil, at: NSPoint(x: panel.frame.maxX - 40, y: panel.frame.minY), in: nil)

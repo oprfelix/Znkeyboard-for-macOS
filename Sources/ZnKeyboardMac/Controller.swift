@@ -41,7 +41,7 @@ final class Controller {
             retry: { [weak self] in self?.rerun(mode: nil) },
             changeLanguage: { [weak self] language in
                 if case .read = mode {
-                    Preferences.readingTarget = language
+                    Preferences.screenshotTarget = language
                     self?.rerun(mode: .read(language, screenshot: false))
                 } else {
                     Preferences.translateTarget = language
@@ -210,9 +210,9 @@ final class Controller {
         do {
             let result = try await request.client.rewrite(request.core, mode: mode)
             guard current == generation, panel.isVisible else { return }
-            if case .read(_, let screenshot) = mode {
-                // A screenshot's text is shown above its translation; selected text is still on screen.
-                panel.showResult(result, original: screenshot ? request.core : nil)
+            if case .read = mode {
+                // The original shows above the translation, to copy as well (a screenshot's text especially).
+                panel.showResult(result, original: request.core)
             } else {
                 // Keep the selection's surrounding spaces and line breaks so the paste fits back in.
                 panel.showResult(request.leading + result + request.trailing)
