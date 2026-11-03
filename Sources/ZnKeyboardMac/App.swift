@@ -63,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             case .polish: self?.controller.run(.polish)
             case .translate: self?.controller.run(.translate(Preferences.translateTarget))
             case .screenshot: self?.controller.runScreenshot()
+            case .read: self?.controller.run(.read(Preferences.screenshotTarget, screenshot: false))
             }
         }
     }
@@ -91,6 +92,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             menu.addItem(.separator())
         }
 
+        let read = NSMenuItem(title: L.readSelection, action: #selector(readSelection), keyEquivalent: "")
+        read.image = Self.symbol("text.magnifyingglass")
+        Self.showShortcut(Preferences.shortcut(for: .read), on: read)
+        menu.addItem(read)
+
+        let screenshot = NSMenuItem(title: L.screenshotTranslate, action: #selector(screenshotTranslate), keyEquivalent: "")
+        screenshot.image = Self.symbol("text.viewfinder")
+        Self.showShortcut(Preferences.shortcut(for: .screenshot), on: screenshot)
+        menu.addItem(screenshot)
+
         let polish = NSMenuItem(title: L.polishSelection, action: #selector(polish), keyEquivalent: "")
         polish.image = Self.symbol("sparkles")
         Self.showShortcut(Preferences.shortcut(for: .polish), on: polish)
@@ -101,11 +112,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         translate.image = Self.symbol("translate")
         Self.showShortcut(Preferences.shortcut(for: .translate), on: translate)
         menu.addItem(translate)
-
-        let screenshot = NSMenuItem(title: L.screenshotTranslate, action: #selector(screenshotTranslate), keyEquivalent: "")
-        screenshot.image = Self.symbol("text.viewfinder")
-        Self.showShortcut(Preferences.shortcut(for: .screenshot), on: screenshot)
-        menu.addItem(screenshot)
 
         let languages = NSMenu()
         for language in Languages.all {
@@ -158,6 +164,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     @objc private func polish() { runAfterMenuCloses(.polish) }
 
     @objc private func translate() { runAfterMenuCloses(.translate(Preferences.translateTarget)) }
+
+    @objc private func readSelection() { runAfterMenuCloses(.read(Preferences.screenshotTarget, screenshot: false)) }
 
     @objc private func chooseLanguage(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }

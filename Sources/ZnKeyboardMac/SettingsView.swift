@@ -219,9 +219,10 @@ struct SettingsView: View {
     private var shortcutsPage: some View {
         Form {
             Section {
+                LabeledContent(L.readShortcut) { ShortcutRecorder(action: .read, apply: applyShortcut) }
+                LabeledContent(L.screenshotShortcut) { ShortcutRecorder(action: .screenshot, apply: applyShortcut) }
                 LabeledContent(L.polishShortcut) { ShortcutRecorder(action: .polish, apply: applyShortcut) }
                 LabeledContent(L.translateShortcut) { ShortcutRecorder(action: .translate, apply: applyShortcut) }
-                LabeledContent(L.screenshotShortcut) { ShortcutRecorder(action: .screenshot, apply: applyShortcut) }
             } footer: {
                 Text(L.shortcutsNote).font(.caption).foregroundStyle(.secondary)
             }

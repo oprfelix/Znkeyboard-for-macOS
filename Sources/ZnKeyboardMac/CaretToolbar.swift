@@ -206,7 +206,8 @@ final class CaretToolbar {
     /// Next to [caret]'s end, on the preferred side when there is room; fades in.
     private func place(_ caret: NSRect, preferAbove: Bool) {
         guard let content = panel.contentView else { return }
-        model.shortcutHints = (Preferences.shortcut(for: .polish).display, Preferences.shortcut(for: .translate).display)
+        model.shortcutHints = (Preferences.shortcut(for: .polish).display,
+                               Preferences.shortcut(for: model.reading ? .read : .translate).display)
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize
         let screen = NSScreen.screens.first { $0.frame.intersects(caret) }?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
@@ -291,7 +292,7 @@ private struct CaretToolbarView: View {
                         .padding(.trailing, 2)
                         .frame(height: 26)
                 }
-                .help(model.reading ? "\(L.readShort) \(model.language)" : "\(L.translateShort) \(model.language)  \(model.shortcutHints.1)")
+                .help(model.reading ? "\(L.readShort) \(model.language)  \(model.shortcutHints.1)" : "\(L.translateShort) \(model.language)  \(model.shortcutHints.1)")
                 Button(action: model.onChooseLanguage) {
                     HStack(spacing: 2) {
                         Text(model.language)

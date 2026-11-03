@@ -5,7 +5,8 @@ the same prompts and 14 target languages. Providers: Google Gemini (Flash-Lite m
 OpenAI-compatible API, with a DeepSeek preset (address built in, `deepseek-flash` by default) or a custom address,
 each with its own key.
 
-- **⇧⌘R** polish the selected text · **⇧⌘T** translate it into the target language (both changeable in Settings)
+- **⇧⌘1** translate the selection to read · **⇧⌘E** polish it · **⇧⌘R** translate it into the target language
+  (all changeable in Settings)
 - Select text in a text box (e.g. ⌘A) and 润色 | AI 翻译为 [EN ▾] appears beside it, where the app reports the selection.
 - Reading translation (off by default, Settings → Usage): select text on a web page or in a document with the
   mouse and 翻译为 [ZH ▾] appears; it translates faithfully into the reading language screenshots use, and
@@ -13,7 +14,7 @@ each with its own key.
 - Clicking elsewhere closes a translation to read (reading and screenshot); the pin in its header keeps it open,
   remembered for next time.
 - A panel near the pointer shows the result: **Return** replaces the selection, **Esc** cancels, **⌘C** copies.
-- **⇧⌘E** screenshot translate: drag over any part of the screen; its text is recognised on this Mac (Vision)
+- **⇧⌘2** screenshot translate: drag over any part of the screen; its text is recognised on this Mac (Vision)
   and translated faithfully into your reading language (Simplified Chinese by default; Chinese text goes to
   English). The image never leaves the Mac. Needs the Screen Recording permission.
 - Menu bar: choose the target language, open Settings (provider, API key, model, permission, language).

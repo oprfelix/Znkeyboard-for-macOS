@@ -199,7 +199,7 @@ final class Controller {
     }
 
     private var lastMode = RewriteMode.polish
-    /// Set while macOS's screenshot selection is up; another ⇧⌘E then does nothing.
+    /// Set while macOS's screenshot selection is up; another screenshot shortcut then does nothing.
     private var capturing = false
 
     private func rewrite(mode: RewriteMode, generation current: Int) async {

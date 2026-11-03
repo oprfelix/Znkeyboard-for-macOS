@@ -7,22 +7,27 @@ enum ShortcutAction: String, CaseIterable {
     case polish
     case translate
     case screenshot
+    /// Translate the selection to read (reading translation).
+    case read
 
     var hotKeyID: UInt32 {
         switch self {
         case .polish: 1
         case .translate: 2
         case .screenshot: 3
+        case .read: 4
         }
     }
 
     var others: [ShortcutAction] { Self.allCases.filter { $0 != self } }
 
+    /// ⇧⌘1 reading, ⇧⌘2 screenshot, ⇧⌘E polish, ⇧⌘R translate (⇧⌘3 and ⇧⌘4 are macOS's own screenshots).
     var defaultShortcut: Shortcut {
         switch self {
-        case .polish: Shortcut(keyCode: kVK_ANSI_R, modifiers: cmdKey | shiftKey, key: "R")
-        case .translate: Shortcut(keyCode: kVK_ANSI_T, modifiers: cmdKey | shiftKey, key: "T")
-        case .screenshot: Shortcut(keyCode: kVK_ANSI_E, modifiers: cmdKey | shiftKey, key: "E")
+        case .read: Shortcut(keyCode: kVK_ANSI_1, modifiers: cmdKey | shiftKey, key: "1")
+        case .screenshot: Shortcut(keyCode: kVK_ANSI_2, modifiers: cmdKey | shiftKey, key: "2")
+        case .polish: Shortcut(keyCode: kVK_ANSI_E, modifiers: cmdKey | shiftKey, key: "E")
+        case .translate: Shortcut(keyCode: kVK_ANSI_R, modifiers: cmdKey | shiftKey, key: "R")
         }
     }
 }

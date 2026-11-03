@@ -19,6 +19,7 @@ enum L {
         t("AI 翻译成\(language.displayName)", "Translate to \(language.displayName)")
     }
     static var polishSelection: String { t("润色选中文字", "Polish Selection") }
+    static var readSelection: String { t("划词翻译", "Translate Selection") }
     static var translateShort: String { t("AI 翻译为", "Translate") }
     static var translateMenu: String { t("AI 翻译的语言", "Translation Language") }
     static var settings: String { t("设置…", "Settings…") }
@@ -153,6 +154,7 @@ enum L {
     static var polishShortcut: String { t("润色", "Polish") }
     static var translateShortcut: String { t("AI 翻译", "Translate") }
     static var screenshotShortcut: String { t("截图翻译", "Screenshot translate") }
+    static var readShortcut: String { t("划词翻译", "Translate selection") }
     static var shortcutsNote: String {
         t("选中文字后按快捷键就能用，没有按钮的 App 里也行；截图翻译按下后框选要翻译的区域。点一下快捷键即可修改。",
           "Select text and press a shortcut; it works even where no buttons appear. For screenshot translate, drag over the area to translate. Click a shortcut to change it.")
