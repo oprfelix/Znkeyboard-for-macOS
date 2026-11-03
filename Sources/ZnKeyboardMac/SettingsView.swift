@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var readingToolbar = Preferences.readingToolbar
     @State private var uiLanguage = Preferences.uiLanguage
     @State private var automaticUpdates = Preferences.automaticUpdateChecks
+    @State private var anonymousStats = Preferences.anonymousStats
     @State private var trusted = TextBridge.isTrusted
     @State private var screenTrusted = ScreenText.hasPermission
     @State private var screenshotTarget = Preferences.screenshotTarget.code
@@ -311,6 +312,11 @@ struct SettingsView: View {
                     Toggle(L.automaticUpdates, isOn: $automaticUpdates)
                         .onChange(of: automaticUpdates) { _, value in Preferences.automaticUpdateChecks = value }
                     Text(L.automaticUpdatesNote).font(.caption).foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(L.anonymousStats, isOn: $anonymousStats)
+                        .onChange(of: anonymousStats) { _, value in Preferences.anonymousStats = value }
+                    Text(L.anonymousStatsNote).font(.caption).foregroundStyle(.secondary)
                 }
             }
         }

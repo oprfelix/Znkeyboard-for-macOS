@@ -76,6 +76,10 @@ enum L {
     static var updateNoPermission: String { t("没有权限替换「应用程序」里的 ZnKeyboard。", "ZnKeyboard in Applications couldn't be replaced (no permission).") }
     static var automaticUpdates: String { t("自动检查更新", "Check for updates automatically") }
     static var automaticUpdatesNote: String { t("每天检查一次，有新版本时提醒你，点一下即可更新。", "Checks once a day and offers new versions; one click installs them.") }
+    static var anonymousStats: String { t("发送匿名使用统计", "Send anonymous usage statistics") }
+    static var anonymousStatsNote: String {
+        t("每天一次，只发送随机编号、平台、版本和使用次数，不包含任何文字。", "Once a day: a random ID, platform, version and how often you used it. Never any text.")
+    }
     static var download: String { t("下载", "Download") }
     static var later: String { t("以后再说", "Later") }
     static func upToDate(_ current: String) -> String { t("ZnKeyboard \(current) 已是最新版本", "ZnKeyboard \(current) is up to date") }

@@ -1,8 +1,10 @@
 import AppKit
+import CryptoKit
 import Security
 import SwiftUI
 
-/// Updates in place: checks the latest GitHub release (by hand, or once a day), downloads its DMG,
+/// Updates in place: checks the latest release (by hand, or once a day) on znkeyboard.2amz.com, or
+/// on GitHub when that can't be reached, downloads its DMG (from GitHub if Cloudflare fails),
 /// accepts the app inside only if it is signed by this app's Developer ID team and notarized, swaps
 /// it in for the running copy and reopens. Same signature, so Accessibility, Screen Recording and
 /// the keychain item carry over.
@@ -14,6 +16,10 @@ enum Updates {
         let version: String
         let dmg: URL
         let size: Int
+        /// The same DMG on GitHub, tried when [dmg] (on Cloudflare) fails.
+        var fallback: URL? = nil
+        /// Checked when the release list gives it (Cloudflare's does).
+        var sha256: String? = nil
     }
 
     /// A newer release found by the last check; the menu bar menu offers it.
@@ -59,6 +65,8 @@ enum Updates {
     }
 
     private static func automaticCheck() {
+        // The anonymous daily ping shares this timer; it has its own switch.
+        UsageStats.pingIfDue()
         guard Preferences.automaticUpdateChecks,
               Date().timeIntervalSince(Preferences.lastUpdateCheck) > 20 * 3600 else { return }
         Task { @MainActor in
@@ -81,8 +89,31 @@ enum Updates {
         release.version.compare(currentVersion, options: .numeric) == .orderedDescending
     }
 
-    /// nil: GitHub couldn't be reached. .some(nil): reached, but the release has no DMG.
+    /// nil: neither Cloudflare nor GitHub could be reached. .some(nil): reached, but the release has no DMG.
     private static func latestRelease() async -> Release?? {
+        if let release = await latestFromCloudflare() { return .some(release) }
+        return await latestFromGitHub()
+    }
+
+    /// The macOS entry of znkeyboard.2amz.com's latest.json, which mainland China reaches more reliably than GitHub.
+    private static func latestFromCloudflare() async -> Release? {
+        var request = URLRequest(url: URL(string: "https://znkeyboard.2amz.com/download/latest.json")!)
+        request.timeoutInterval = 10
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let entry = json["macos"] as? [String: Any],
+              let version = entry["version"] as? String, let file = entry["file"] as? String,
+              file.lowercased().hasSuffix(".dmg"), !file.contains("/"),
+              let dmg = URL(string: "https://znkeyboard.2amz.com/download/macos/\(file)") else { return nil }
+        return Release(
+            version: version, dmg: dmg, size: entry["size"] as? Int ?? 0,
+            fallback: URL(string: "https://github.com/oprfelix/Znkeyboard-for-macOS/releases/download/v\(version)/\(file)"),
+            sha256: entry["sha256"] as? String
+        )
+    }
+
+    private static func latestFromGitHub() async -> Release?? {
         var request = URLRequest(url: URL(string: "https://api.github.com/repos/oprfelix/Znkeyboard-for-macOS/releases/latest")!)
         request.timeoutInterval = 10
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -137,12 +168,23 @@ enum Updates {
     private static var downloadTask: URLSessionDownloadTask?
     private static var progressObservation: NSKeyValueObservation?
 
+    /// From Cloudflare, then from GitHub when that fails; checked against the size and SHA-256 given.
     private static func download(_ release: Release) async throws -> URL {
+        do {
+            return try await download(release, from: release.dmg)
+        } catch let error as UpdateError {
+            guard let fallback = release.fallback else { throw error }
+            progress.fraction = 0
+            return try await download(release, from: fallback)
+        }
+    }
+
+    private static func download(_ release: Release, from url: URL) async throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("znkeyboard-update-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let target = folder.appendingPathComponent("ZnKeyboard.dmg")
         let downloaded: URL = try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.downloadTask(with: release.dmg) { location, response, error in
+            let task = URLSession.shared.downloadTask(with: url) { location, response, error in
                 if let location, (response as? HTTPURLResponse)?.statusCode == 200 {
                     do {
                         try FileManager.default.moveItem(at: location, to: target)
@@ -167,6 +209,12 @@ enum Updates {
         downloadTask = nil
         let size = (try? FileManager.default.attributesOfItem(atPath: downloaded.path)[.size] as? Int) ?? -1
         guard release.size == 0 || size == release.size else { throw UpdateError(message: L.downloadFailed) }
+        if let expected = release.sha256 {
+            guard let data = try? Data(contentsOf: downloaded, options: .mappedIfSafe),
+                  SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == expected.lowercased() else {
+                throw UpdateError(message: L.updateDamaged)
+            }
+        }
         return downloaded
     }
 

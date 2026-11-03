@@ -196,10 +196,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     @objc private func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
-        let credits = NSMutableAttributedString(string: "oprfelix.github.io/znkeyboard", attributes: [
-            .link: URL(string: "https://oprfelix.github.io/znkeyboard/")!,
-            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+        // The website first, then the source and issues on GitHub.
+        let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let credits = NSMutableAttributedString(string: "znkeyboard.2amz.com", attributes: [
+            .link: URL(string: "https://znkeyboard.2amz.com/")!, .font: font,
         ])
+        credits.append(NSAttributedString(string: "\n", attributes: [.font: font]))
+        credits.append(NSAttributedString(string: "github.com/oprfelix/Znkeyboard-for-macOS", attributes: [
+            .link: URL(string: "https://github.com/oprfelix/Znkeyboard-for-macOS")!, .font: font,
+        ]))
         credits.setAlignment(.center, range: NSRange(location: 0, length: credits.length))
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }

@@ -66,6 +66,31 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue, forKey: pinKey) }
     }
 
+    /// The anonymous daily ping behind the numbers on znkeyboard.2amz.com. On by default.
+    static var anonymousStats: Bool {
+        get { UserDefaults.standard.object(forKey: "anonymousStats") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "anonymousStats") }
+    }
+
+    /// A random id made on this Mac for the ping, tied to nothing else.
+    static var installID: String {
+        if let id = UserDefaults.standard.string(forKey: "installID") { return id }
+        let id = UUID().uuidString.lowercased()
+        UserDefaults.standard.set(id, forKey: "installID")
+        return id
+    }
+
+    /// Polish and translate runs not yet reported.
+    static var pendingUses: Int {
+        get { UserDefaults.standard.integer(forKey: "pendingUses") }
+        set { UserDefaults.standard.set(max(newValue, 0), forKey: "pendingUses") }
+    }
+
+    static var lastPing: Date {
+        get { UserDefaults.standard.object(forKey: "lastPing") as? Date ?? .distantPast }
+        set { UserDefaults.standard.set(newValue, forKey: "lastPing") }
+    }
+
     /// A daily look for a new release. On by default.
     static var automaticUpdateChecks: Bool {
         get { UserDefaults.standard.object(forKey: automaticUpdatesKey) as? Bool ?? true }

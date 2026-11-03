@@ -209,6 +209,7 @@ final class Controller {
         defer { if current == generation { onBusyChange(false) } }
         do {
             let result = try await request.client.rewrite(request.core, mode: mode)
+            UsageStats.recordUse()
             guard current == generation, panel.isVisible else { return }
             if case .read = mode {
                 // The original shows above the translation, to copy as well (a screenshot's text especially).

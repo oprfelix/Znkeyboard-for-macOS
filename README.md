@@ -19,6 +19,11 @@ each with its own key.
   English). The image never leaves the Mac. Needs the Screen Recording permission.
 - Menu bar: choose the target language, open Settings (provider, API key, model, permission, language).
 
+Website: [znkeyboard.2amz.com](https://znkeyboard.2amz.com/) (mirror of oprfelix.github.io/znkeyboard). Updates come
+from znkeyboard.2amz.com, or from GitHub Releases when that fails. Once a day ZnKeyboard sends an anonymous ping
+(a random ID, platform, version and how many times it polished or translated; never any text) for the usage
+numbers on the website; Settings → General turns it off.
+
 Needs macOS 14+ and the Accessibility permission (System Settings → Privacy & Security →
 Accessibility) to read and replace the selection; screenshot translate also needs Screen Recording.
 API keys are stored in the Keychain.
