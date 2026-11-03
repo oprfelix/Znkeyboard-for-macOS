@@ -98,6 +98,10 @@ enum L {
     static var noChange: String { t("没有需要修改的地方。", "Nothing to change.") }
     static var keyRejected: String { t("请求被拒绝，请检查 API Key 和模型。", "The request was rejected. Check your API key and model.") }
     static var badResponse: String { t("AI 没有返回可用的结果，请再试一次。", "The AI returned nothing usable. Try again.") }
+    static func providerBusy(_ code: Int) -> String {
+        t("AI 服务商暂时繁忙（\(code)），自动重试后仍未成功。请稍后再试，或在设置里换用其他服务商。",
+          "The AI provider is busy right now (\(code)) and still didn't answer after a few tries. Try again shortly, or switch providers in Settings.")
+    }
     static func requestFailed(_ code: Int, _ body: String) -> String {
         t("AI 请求失败（\(code)）。", "The AI request failed (\(code)).")
     }

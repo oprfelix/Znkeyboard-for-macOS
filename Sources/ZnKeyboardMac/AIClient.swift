@@ -22,11 +22,15 @@ enum RewriteError: LocalizedError {
         case .badEndpoint: L.badEndpoint
         case .tooLong: L.tooLong
         case .noChange: L.noChange
+        case .http(let code, _) where Self.isBusy(code): L.providerBusy(code)
         case .http(let code, let body):
             code == 400 || code == 401 || code == 403 ? L.keyRejected : L.requestFailed(code, body)
         case .badResponse: L.badResponse
         }
     }
+
+    /// Too many requests, or the server failing or overloaded (DeepSeek's 503 "Service is too busy"): worth trying again.
+    static func isBusy(_ code: Int) -> Bool { code == 429 || code >= 500 }
 }
 
 /// Talks to Gemini's OpenAI-compatible endpoint or any other OpenAI-compatible server, with the
@@ -58,11 +62,28 @@ struct AIClient {
         guard !apiKey.isEmpty else { throw RewriteError.missingKey }
         guard text.count <= Self.maxSourceCharacters else { throw RewriteError.tooLong }
         do {
-            return try await request(text, mode: mode, strictSchema: true)
+            return try await withRetries { try await request(text, mode: mode, strictSchema: true) }
         } catch RewriteError.http(let code, let body) where [400, 404, 422].contains(code) && Self.mentionsSchema(body) {
             // Some servers (DeepSeek, older OpenAI-compatible ones) only take plain JSON mode.
-            return try await request(text, mode: mode, strictSchema: false)
+            return try await withRetries { try await request(text, mode: mode, strictSchema: false) }
         }
+    }
+
+    /// Seconds to wait before each further try when the provider is busy; two more tries in all.
+    private static let retryDelays: [UInt64] = [1, 3]
+
+    /// Runs [attempt], trying again after a short wait when the provider answers busy (429, 5xx):
+    /// those pass within seconds, so the user rarely sees them. Anything else fails at once.
+    private func withRetries(_ attempt: () async throws -> String) async throws -> String {
+        for delay in Self.retryDelays {
+            do {
+                return try await attempt()
+            } catch RewriteError.http(let code, _) where RewriteError.isBusy(code) {
+                CaretLog.note("\(provider.rawValue) \(model): HTTP \(code), trying again in \(delay) s")
+                try await Task.sleep(nanoseconds: delay * 1_000_000_000)
+            }
+        }
+        return try await attempt()
     }
 
     private func request(_ text: String, mode: RewriteMode, strictSchema: Bool) async throws -> String {
