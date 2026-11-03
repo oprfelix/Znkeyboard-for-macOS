@@ -139,16 +139,23 @@ enum L {
     }
 
     static var usageSection: String { t("使用", "Usage") }
-    static var caretToolbar: String { t("选中文字后显示按钮", "Show buttons on selected text") }
+    static var caretToolbar: String { t("输入框中选中文字后显示按钮", "Buttons on text selected in a text box") }
     static var caretToolbarNote: String {
-        t("用鼠标拖选或按 ⌘A 全选后，旁边会出现「润色」和「AI 翻译为」按钮。",
-          "Drag over text or press ⌘A, and Polish and Translate buttons appear beside it.")
+        t("在输入框里用鼠标拖选或按 ⌘A 全选后，旁边会出现「润色」和「AI 翻译为」按钮。",
+          "Drag over text in a text box or press ⌘A, and Polish and Translate buttons appear beside it.")
     }
-    static var clickOutsideCloses: String { t("点击空白处关闭截图翻译", "Click outside to close screenshot translation") }
-    static var clickOutsideClosesNote: String {
-        t("截图翻译的结果卡片显示后，点击卡片以外的任意位置即可关闭，不用点 ✕。",
-          "Click anywhere outside the screenshot translation card to close it, instead of clicking ✕.")
+    static var readingToolbar: String { t("划词翻译", "Translate text you select while reading") }
+    static var readingToolbarNote: String {
+        t("在网页、文档里用鼠标选中文字后，旁边会出现「翻译为」按钮。",
+          "Select text on a web page or in a document with the mouse, and a Translate button appears beside it.")
     }
+    static var readingTarget: String { t("划词翻译成", "Selected text translates to") }
+    static var readingTargetNote: String {
+        t("设为中文时，选中的中文会翻译成英文。", "Set to Chinese, Chinese text goes to English instead.")
+    }
+    static var readShort: String { t("翻译为", "Translate to") }
+    static var pinCard: String { t("固定：点击别处时不关闭", "Pin: stay open when clicking elsewhere") }
+    static var unpinCard: String { t("取消固定：点击别处时关闭", "Unpin: close when clicking elsewhere") }
     static var shortcutsSection: String { t("快捷键", "Shortcuts") }
     static var polishShortcut: String { t("润色", "Polish") }
     static var translateShortcut: String { t("AI 翻译", "Translate") }

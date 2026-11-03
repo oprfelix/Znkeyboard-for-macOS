@@ -19,6 +19,8 @@ final class ReviewModel: ObservableObject {
     @Published var canRetry = false
     /// The error's button: 打开设置, or 去授权 when it opens System Settings instead.
     @Published var settingsTitle = L.openSettings
+    /// Translation cards stay open on clicks elsewhere while this is on; remembered.
+    @Published var pinned = Preferences.pinTranslationCard
     var onReplace: (String) -> Void = { _ in }
     var onClose: () -> Void = {}
     var onOpenSettings: () -> Void = {}
@@ -34,7 +36,7 @@ final class ReviewPanelController {
     private var closing: UUID?
     /// Near the bottom of the screen the card opens above its anchor and grows upward.
     private var growsUp = false
-    /// Watches clicks in other apps while a screenshot translation is shown.
+    /// Watches clicks in other apps while a translation to read is shown.
     private var outsideClickMonitor: Any?
     private lazy var panel: NSPanel = {
         let panel = KeyablePanel(
@@ -132,15 +134,22 @@ final class ReviewPanelController {
 
     var isVisible: Bool { panel.isVisible && closing == nil }
 
-    /// Screenshot translation is only read, so a click anywhere else dismisses it (when the setting
-    /// is on). A global monitor only sees clicks that go to other apps, so clicks on the card, and
-    /// on its language menu, never count; neither do clicks while the text is still being read.
+    /// A translation to read with the pin on: clicks elsewhere leave it open. Errors aren't kept.
+    var staysOpen: Bool {
+        guard case .read = model.mode, model.pinned else { return false }
+        if case .error = model.state { return false }
+        return true
+    }
+
+    /// Translations to read have nothing to replace, so a click anywhere else dismisses them unless
+    /// pinned. A global monitor only sees clicks that go to other apps, so clicks on the card, and on
+    /// its language menu, never count; neither do clicks while the text is still being read.
     private func watchOutsideClicks(mode: RewriteMode) {
         stopWatchingOutsideClicks()
-        guard case .read = mode, Preferences.screenshotClickOutsideCloses else { return }
+        guard case .read = mode else { return }
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
             DispatchQueue.main.async {
-                guard let self, self.isVisible, self.model.state != .loading else { return }
+                guard let self, self.isVisible, self.model.state != .loading, !self.staysOpen else { return }
                 self.model.onClose()
             }
         }
@@ -280,9 +289,9 @@ private struct ReviewView: View {
             case .polish:
                 Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
                 Text(L.polish).font(.headline)
-            case .read(let language):
-                Image(systemName: "text.viewfinder").foregroundStyle(Color.accentColor)
-                Text(L.screenshotTranslateTo).font(.headline)
+            case .read(let language, let screenshot):
+                Image(systemName: screenshot ? "text.viewfinder" : "translate").foregroundStyle(Color.accentColor)
+                Text(screenshot ? L.screenshotTranslateTo : L.readShort).font(.headline)
                 languageMenu(language)
             case .translate(let language):
                 Image(systemName: "translate").foregroundStyle(Color.accentColor)
@@ -290,6 +299,21 @@ private struct ReviewView: View {
                 languageMenu(language)
             }
             Spacer()
+            if case .read = model.mode, !isError {
+                Button {
+                    model.pinned.toggle()
+                    Preferences.pinTranslationCard = model.pinned
+                } label: {
+                    Image(systemName: model.pinned ? "pin.fill" : "pin")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(model.pinned ? Color.accentColor : .secondary)
+                        .rotationEffect(.degrees(45))
+                        .frame(width: 20, height: 20)
+                        .background(.quaternary, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .help(model.pinned ? L.unpinCard : L.pinCard)
+            }
             Button(action: model.onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
@@ -301,6 +325,11 @@ private struct ReviewView: View {
             .keyboardShortcut(.cancelAction)
             .help(L.closeHint)
         }
+    }
+
+    private var isError: Bool {
+        if case .error = model.state { return true }
+        return false
     }
 
     /// The target language as a menu; choosing one translates the same text again.
@@ -342,15 +371,17 @@ private struct ReviewView: View {
         }
     }
 
-    /// Screenshot translation: nothing to replace, so the main action copies the translation.
+    /// A translation to read: nothing to replace, so the main action copies the translation.
     private func readActions(_ text: String) -> some View {
         HStack(spacing: 8) {
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(model.original ?? "", forType: .string)
-                model.onClose()
-            } label: {
-                Label(L.copyOriginal, systemImage: "text.quote")
+            if let original = model.original {
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(original, forType: .string)
+                    model.onClose()
+                } label: {
+                    Label(L.copyOriginal, systemImage: "text.quote")
+                }
             }
             Button(action: model.onRetry) {
                 Image(systemName: "arrow.clockwise")

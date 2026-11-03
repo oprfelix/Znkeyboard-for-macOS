@@ -50,24 +50,60 @@ struct FocusedField {
     }
 
     /// `elsewhere`: the focused field isn't under the mouse, so the selection in it is an old one.
-    enum SelectionState { case notEditable, empty, selected, unknown, elsewhere }
+    /// `reading`: text selected in something that can't be edited (a web page, a document being read).
+    enum SelectionState { case notEditable, empty, selected, unknown, elsewhere, reading }
 
     /// Whether the focused field is editable and has a selection, without needing its position.
     /// Chrome often reports neither range nor bounds after a mouse selection: that is `unknown`.
     /// [points]: where a mouse selection began and ended (AppKit screen coordinates).
-    static func selectionState(in app: NSRunningApplication, mouseAt points: [NSPoint]) -> SelectionState {
+    /// [reading]: also look for text selected in read-only content.
+    static func selectionState(in app: NSRunningApplication, mouseAt points: [NSPoint], reading: Bool = false) -> SelectionState {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(appElement, 0.15)
         guard let element = appElement.element(kAXFocusedUIElementAttribute) else { return .notEditable }
         let role = element.string(kAXRoleAttribute) ?? "?"
-        guard element.string(kAXSubroleAttribute) != kAXSecureTextFieldSubrole as String,
-              isEditable(element, role: role) else { return .notEditable }
+        guard element.string(kAXSubroleAttribute) != kAXSecureTextFieldSubrole as String else { return .notEditable }
+        guard isEditable(element, role: role) else {
+            guard reading else { return .notEditable }
+            CaretLog.note("read-only: \(role)")
+            return hasReadingSelection(element, mouseAt: points) ? .reading : .notEditable
+        }
         if let frame = frame(of: element), !points.contains(where: { frame.insetBy(dx: -4, dy: -4).contains($0) }) {
             return .elsewhere
         }
         if let range = element.range(kAXSelectedTextRangeAttribute) { return range.length > 0 ? .selected : .empty }
         if let selected = element.string(kAXSelectedTextAttribute), !selected.isEmpty { return .selected }
         return .unknown
+    }
+
+    /// Selected text in [element] or the page or document around it, under the mouse. Only a
+    /// non-blank selection the app reports counts: anything uncertain shows nothing.
+    private static func hasReadingSelection(_ element: AXUIElement, mouseAt points: [NSPoint]) -> Bool {
+        var current: AXUIElement? = element
+        // The focused element can be a link or a group inside the web area that holds the selection.
+        for _ in 0..<6 {
+            guard let candidate = current else { break }
+            if let selected = selectedReadingText(candidate) {
+                guard !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+                if let frame = frame(of: candidate), !points.isEmpty,
+                   !points.contains(where: { frame.insetBy(dx: -4, dy: -4).contains($0) }) { return false }
+                return true
+            }
+            current = candidate.element(kAXParentAttribute)
+        }
+        return false
+    }
+
+    /// The element's selected text, from AXSelectedText or (web pages) its selected text-marker range;
+    /// nil when it reports neither.
+    private static func selectedReadingText(_ element: AXUIElement) -> String? {
+        if let text = element.string(kAXSelectedTextAttribute), !text.isEmpty { return text }
+        guard let markers = element.value("AXSelectedTextMarkerRange") else { return nil }
+        var result: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(
+            element, "AXStringForTextMarkerRange" as CFString, markers, &result
+        ) == .success else { return nil }
+        return result as? String ?? ""
     }
 
     private static let textRoles: Set<String> = [

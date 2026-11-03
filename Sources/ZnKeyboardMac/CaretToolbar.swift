@@ -5,11 +5,15 @@ import SwiftUI
 /// Shows 润色 | AI 翻译为 [EN ▾] next to text the user selects in an editable field. Keyboard
 /// selections (⌘A, ⇧-arrows) are found through Accessibility and the toolbar sits under them;
 /// mouse selections (drag, double or triple click) put it at the pointer, since browsers often
-/// don't report where a mouse selection is. Nothing is read or sent until a button is clicked.
+/// don't report where a mouse selection is. Text selected with the mouse while reading (a web page,
+/// a document) gets 翻译为 [EN ▾] alone, with its own language. Nothing is read or sent until a
+/// button is clicked.
 @MainActor
 final class CaretToolbar {
     var onPolish: () -> Void = {}
     var onTranslate: () -> Void = {}
+    /// Translate text selected while reading (the reading button).
+    var onRead: () -> Void = {}
     /// True while the review panel is up; the toolbar stays out of its way.
     var isSuspended: () -> Bool = { false }
 
@@ -50,7 +54,11 @@ final class CaretToolbar {
         panel.becomesKeyOnlyIfNeeded = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         model.onPolish = { [weak self] in self?.hide(); self?.onPolish() }
-        model.onTranslate = { [weak self] in self?.hide(); self?.onTranslate() }
+        model.onTranslate = { [weak self] in
+            guard let self else { return }
+            self.hide()
+            if self.model.reading { self.onRead() } else { self.onTranslate() }
+        }
         model.onChooseLanguage = { [weak self] in self?.chooseLanguage() }
         panel.contentView = FirstClickHostingView(rootView: CaretToolbarView(model: model))
         return panel
@@ -104,17 +112,20 @@ final class CaretToolbar {
         guard dragged || clickCount >= 2 else { return }
         // Let the app finish updating its selection first.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self, Preferences.caretToolbar, TextBridge.isTrusted, !self.isSuspended(),
+            let editing = Preferences.caretToolbar, reading = Preferences.readingToolbar
+            guard let self, editing || reading, TextBridge.isTrusted, !self.isSuspended(),
                   let app = NSWorkspace.shared.frontmostApplication,
                   app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
             self.enableAccessibility(for: app)
             // The field must be where the mouse was: an old selection stays put while a scrollbar or
             // title bar is dragged.
-            let state = FocusedField.selectionState(in: app, mouseAt: [point, start].compactMap { $0 })
+            let state = FocusedField.selectionState(in: app, mouseAt: [point, start].compactMap { $0 }, reading: reading)
             CaretLog.note("mouse selection: \(state)")
-            guard state == .selected || state == .unknown else { return }
+            let forReading = state == .reading
+            guard forReading || (editing && (state == .selected || state == .unknown)) else { return }
             self.mouseAnchorPID = app.processIdentifier
-            self.model.language = Preferences.translateTarget.code
+            self.model.reading = forReading
+            self.model.language = (forReading ? Preferences.readingTarget : Preferences.translateTarget).code
             self.show(atPointer: point, above: draggedUp)
         }
     }
@@ -145,7 +156,7 @@ final class CaretToolbar {
     }
 
     private func tick() {
-        guard Preferences.caretToolbar, TextBridge.isTrusted, !isSuspended(),
+        guard Preferences.caretToolbar || Preferences.readingToolbar, TextBridge.isTrusted, !isSuspended(),
               let app = NSWorkspace.shared.frontmostApplication,
               app.bundleIdentifier != Bundle.main.bundleIdentifier else {
             reset()
@@ -157,7 +168,8 @@ final class CaretToolbar {
             if pid != app.processIdentifier { endMouseAnchor() }
             return
         }
-        guard let field = FocusedField.current(in: app), field.hasSelection else {
+        // Keyboard selections are for text boxes only: ⌘A on a page selects the whole page.
+        guard Preferences.caretToolbar, let field = FocusedField.current(in: app), field.hasSelection else {
             reset()
             return
         }
@@ -172,6 +184,7 @@ final class CaretToolbar {
         }
         guard Date().timeIntervalSince(unchangedSince) >= Self.settleDelay, !panel.isVisible || hiding != nil,
               Date().timeIntervalSince(lastSelectionKey) < 2 else { return }
+        model.reading = false
         model.language = Preferences.translateTarget.code
         show(below: caret)
     }
@@ -218,7 +231,8 @@ final class CaretToolbar {
 
     private func chooseLanguage() {
         let menu = NSMenu()
-        let current = Preferences.translateTarget
+        let reading = model.reading
+        let current = reading ? Preferences.readingTarget : Preferences.translateTarget
         for language in Languages.all {
             let item = NSMenuItem(title: "\(language.code) · \(language.displayName)", action: #selector(LanguageMenuTarget.choose(_:)), keyEquivalent: "")
             item.target = LanguageMenuTarget.shared
@@ -227,7 +241,7 @@ final class CaretToolbar {
             menu.addItem(item)
         }
         LanguageMenuTarget.shared.onChoose = { [weak self] code in
-            Preferences.translateTarget = Languages.language(code: code)
+            if reading { Preferences.readingTarget = Languages.language(code: code) } else { Preferences.translateTarget = Languages.language(code: code) }
             self?.model.language = code
         }
         menu.popUp(positioning: nil, at: NSPoint(x: panel.frame.maxX - 40, y: panel.frame.minY), in: nil)
@@ -247,6 +261,8 @@ final class CaretToolbar {
 
 final class CaretToolbarModel: ObservableObject {
     @Published var language = "EN"
+    /// Showing for read-only text: translate only, into the reading language.
+    @Published var reading = false
     /// Shown in the buttons' tooltips, e.g. "⇧⌘R".
     @Published var shortcutHints = ("", "")
     var onPolish: () -> Void = {}
@@ -259,21 +275,23 @@ private struct CaretToolbarView: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            Button(action: model.onPolish) {
-                Label(L.polish, systemImage: "sparkles")
-                    .padding(.horizontal, 10)
-                    .frame(height: 26)
+            if !model.reading {
+                Button(action: model.onPolish) {
+                    Label(L.polish, systemImage: "sparkles")
+                        .padding(.horizontal, 10)
+                        .frame(height: 26)
+                }
+                .help("\(L.polish)  \(model.shortcutHints.0)")
+                Divider().frame(height: 16)
             }
-            .help("\(L.polish)  \(model.shortcutHints.0)")
-            Divider().frame(height: 16)
             HStack(spacing: 4) {
                 Button(action: model.onTranslate) {
-                    Label(L.translateShort, systemImage: "translate")
+                    Label(model.reading ? L.readShort : L.translateShort, systemImage: "translate")
                         .padding(.leading, 10)
                         .padding(.trailing, 2)
                         .frame(height: 26)
                 }
-                .help("\(L.translateShort) \(model.language)  \(model.shortcutHints.1)")
+                .help(model.reading ? "\(L.readShort) \(model.language)" : "\(L.translateShort) \(model.language)  \(model.shortcutHints.1)")
                 Button(action: model.onChooseLanguage) {
                     HStack(spacing: 2) {
                         Text(model.language)

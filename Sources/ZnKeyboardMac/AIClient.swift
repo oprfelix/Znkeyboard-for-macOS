@@ -4,8 +4,8 @@ import Foundation
 enum RewriteMode {
     case polish
     case translate(TranslateLanguage)
-    /// Screenshot translation: a faithful translation to read, not a rewrite to send.
-    case read(TranslateLanguage)
+    /// A faithful translation to read, not a rewrite to send: of text selected while reading, or of a screenshot.
+    case read(TranslateLanguage, screenshot: Bool)
 }
 
 enum RewriteError: LocalizedError {
@@ -165,7 +165,7 @@ struct AIClient {
 /// System prompts shipped in the app bundle, copied from ZnKeyboard for Android.
 enum Prompts {
     static func system(for mode: RewriteMode) -> String {
-        if case .read(let language) = mode {
+        if case .read(let language, _) = mode {
             return (load("read") ?? readFallback).replacingOccurrences(of: "{language}", with: language.name)
         }
         var parts = [load("rewrite_base") ?? fallback]

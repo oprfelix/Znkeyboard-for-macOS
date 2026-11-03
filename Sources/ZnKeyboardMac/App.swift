@@ -42,9 +42,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             CaretLog.note("shortcut \(action.rawValue) \(Preferences.shortcut(for: action).display) registered: \(ok)")
         }
 
-        caretToolbar.isSuspended = { [weak self] in self?.controller.isPanelVisible ?? false }
+        // A pinned card sits beside what's being read, so selections there still get the toolbar.
+        caretToolbar.isSuspended = { [weak self] in
+            guard let controller = self?.controller else { return false }
+            return controller.isPanelVisible && !controller.isPanelPinned
+        }
         caretToolbar.onPolish = { [weak self] in self?.controller.run(.polish) }
         caretToolbar.onTranslate = { [weak self] in self?.controller.run(.translate(Preferences.translateTarget)) }
+        caretToolbar.onRead = { [weak self] in self?.controller.run(.read(Preferences.readingTarget, screenshot: false)) }
         caretToolbar.start()
 
         // First run: nothing works without a key and Accessibility, so start where they're set.

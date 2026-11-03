@@ -7,6 +7,10 @@ each with its own key.
 
 - **⇧⌘R** polish the selected text · **⇧⌘T** translate it into the target language (both changeable in Settings)
 - Select text in a text box (e.g. ⌘A) and 润色 | AI 翻译为 [EN ▾] appears beside it, where the app reports the selection.
+- Reading translation (off by default, Settings → Usage): select text on a web page or in a document with the
+  mouse and 翻译为 [EN ▾] appears; it translates faithfully into its own language and the result copies.
+- Clicking elsewhere closes a translation to read (reading and screenshot); the pin in its header keeps it open,
+  remembered for next time.
 - A panel near the pointer shows the result: **Return** replaces the selection, **Esc** cancels, **⌘C** copies.
 - **⇧⌘E** screenshot translate: drag over any part of the screen; its text is recognised on this Mac (Vision)
   and translated faithfully into your reading language (Simplified Chinese by default; Chinese text goes to

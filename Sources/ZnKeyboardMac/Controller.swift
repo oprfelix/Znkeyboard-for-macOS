@@ -14,6 +14,10 @@ final class Controller {
 
     var isPanelVisible: Bool { panel.isVisible }
 
+    /// A pinned translation card, which selections beside it don't wait for.
+    var isPanelPinned: Bool { panel.isVisible && panel.staysOpen }
+
+    /// Polish or translate the selection, or (`.read`) translate text selected while reading.
     func run(_ mode: RewriteMode) {
         CaretLog.note("shortcut pressed (#\(generation + 1))")
         generation += 1
@@ -36,8 +40,13 @@ final class Controller {
             },
             retry: { [weak self] in self?.rerun(mode: nil) },
             changeLanguage: { [weak self] language in
-                Preferences.translateTarget = language
-                self?.rerun(mode: .translate(language))
+                if case .read = mode {
+                    Preferences.readingTarget = language
+                    self?.rerun(mode: .read(language, screenshot: false))
+                } else {
+                    Preferences.translateTarget = language
+                    self?.rerun(mode: .translate(language))
+                }
             }
         )
         // Beside the selection when the app says where it is (⌘A leaves the pointer anywhere).
@@ -91,6 +100,12 @@ final class Controller {
             }
             let (leading, core, trailing) = Self.splitWhitespace(selection)
             request = (leading, core, trailing, client)
+            // Text already in the reading language (Chinese) goes to English instead, as for screenshots.
+            var mode = mode
+            if case .read(let target, _) = mode, ["ZH", "TW"].contains(target.code), ScreenText.isMostlyChinese(core) {
+                mode = .read(Languages.language(code: "EN"), screenshot: false)
+                panel.showLoading(mode: mode)
+            }
             await rewrite(mode: mode, generation: current)
         }
     }
@@ -113,14 +128,14 @@ final class Controller {
             retry: { [weak self] in self?.rerun(mode: nil) },
             changeLanguage: { [weak self] language in
                 Preferences.screenshotTarget = language
-                self?.rerun(mode: .read(language))
+                self?.rerun(mode: .read(language, screenshot: true))
             }
         )
         let target = Preferences.screenshotTarget
 
         guard ScreenText.hasPermission else {
             ScreenText.requestPermission()
-            panel.show(mode: .read(target), actions: actions)
+            panel.show(mode: .read(target, screenshot: true), actions: actions)
             panel.showError(L.needScreenRecording, offerSettings: true, settingsTitle: L.grant)
             return
         }
@@ -134,12 +149,12 @@ final class Controller {
         do {
             client = try Preferences.client()
         } catch {
-            panel.show(mode: .read(target), actions: settingsActions)
+            panel.show(mode: .read(target, screenshot: true), actions: settingsActions)
             panel.showError(L.badEndpoint, offerSettings: true)
             return
         }
         guard !client.apiKey.isEmpty else {
-            panel.show(mode: .read(target), actions: settingsActions)
+            panel.show(mode: .read(target, screenshot: true), actions: settingsActions)
             panel.showError(L.needKey, offerSettings: true)
             return
         }
@@ -149,7 +164,7 @@ final class Controller {
             let image = await ScreenText.captureRegion()
             capturing = false
             guard let image, current == generation else { return }
-            var mode = RewriteMode.read(target)
+            var mode = RewriteMode.read(target, screenshot: true)
             panel.show(mode: mode, actions: actions)
             let text: String
             do {
@@ -165,7 +180,7 @@ final class Controller {
                 return
             }
             if ["ZH", "TW"].contains(target.code), ScreenText.isMostlyChinese(text) {
-                mode = .read(Languages.language(code: "EN"))
+                mode = .read(Languages.language(code: "EN"), screenshot: true)
                 panel.showLoading(mode: mode)
             }
             request = ("", text, "", client)
@@ -195,8 +210,9 @@ final class Controller {
         do {
             let result = try await request.client.rewrite(request.core, mode: mode)
             guard current == generation, panel.isVisible else { return }
-            if case .read = mode {
-                panel.showResult(result, original: request.core)
+            if case .read(_, let screenshot) = mode {
+                // A screenshot's text is shown above its translation; selected text is still on screen.
+                panel.showResult(result, original: screenshot ? request.core : nil)
             } else {
                 // Keep the selection's surrounding spaces and line breaks so the paste fits back in.
                 panel.showResult(request.leading + result + request.trailing)

@@ -40,23 +40,30 @@ enum Preferences {
     private static let automaticUpdatesKey = "automaticUpdateChecks"
     private static let lastUpdateCheckKey = "lastUpdateCheck"
     private static let notifiedUpdateKey = "notifiedUpdate"
-    private static let clickOutsideKey = "screenshotClickOutsideCloses"
+    private static let readingToolbarKey = "readingToolbar"
+    private static let pinKey = "pinTranslationCard"
 
     static var provider: Provider {
         get { Provider(rawValue: UserDefaults.standard.string(forKey: providerKey) ?? "") ?? .gemini }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: providerKey) }
     }
 
-    /// The 润色 | AI 翻译 buttons next to selected text. Off by default; the shortcuts work without it.
+    /// The 润色 | AI 翻译 buttons next to text selected in a text box. On by default (since 0.4.0).
     static var caretToolbar: Bool {
-        get { UserDefaults.standard.object(forKey: caretToolbarKey) as? Bool ?? false }
+        get { UserDefaults.standard.object(forKey: caretToolbarKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: caretToolbarKey) }
     }
 
-    /// Clicking anywhere outside the screenshot translation card closes it. On by default.
-    static var screenshotClickOutsideCloses: Bool {
-        get { UserDefaults.standard.object(forKey: clickOutsideKey) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: clickOutsideKey) }
+    /// The 翻译为 button next to text selected while reading (web pages, documents). Off by default.
+    static var readingToolbar: Bool {
+        get { UserDefaults.standard.bool(forKey: readingToolbarKey) }
+        set { UserDefaults.standard.set(newValue, forKey: readingToolbarKey) }
+    }
+
+    /// Translation cards (reading, screenshot) stay open on clicks elsewhere. Remembered; off by default.
+    static var pinTranslationCard: Bool {
+        get { UserDefaults.standard.bool(forKey: pinKey) }
+        set { UserDefaults.standard.set(newValue, forKey: pinKey) }
     }
 
     /// A daily look for a new release. On by default.
@@ -149,6 +156,12 @@ enum Preferences {
     static var translateTarget: TranslateLanguage {
         get { Languages.language(code: UserDefaults.standard.string(forKey: targetKey) ?? "EN") }
         set { UserDefaults.standard.set(newValue.code, forKey: targetKey) }
+    }
+
+    /// The language the reading button translates into, on its own; English until changed.
+    static var readingTarget: TranslateLanguage {
+        get { Languages.language(code: UserDefaults.standard.string(forKey: "readingTarget") ?? "EN") }
+        set { UserDefaults.standard.set(newValue.code, forKey: "readingTarget") }
     }
 
     /// The language screenshot translation reads into; Simplified Chinese until changed.
