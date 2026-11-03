@@ -203,20 +203,25 @@ final class CaretToolbar {
 
     private func show(below caret: NSRect) { place(caret, preferAbove: false) }
 
-    /// Next to [caret]'s end, on the preferred side when there is room; fades in.
+    /// Next to [caret]'s end, on the preferred side when there is room, the other side otherwise, and
+    /// always inside the visible part of the screen it is on; fades in.
     private func place(_ caret: NSRect, preferAbove: Bool) {
         guard let content = panel.contentView else { return }
         model.shortcutHints = (Preferences.shortcut(for: .polish).display,
                                Preferences.shortcut(for: model.reading ? .read : .translate).display)
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize
-        let screen = NSScreen.screens.first { $0.frame.intersects(caret) }?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+        let screen = NSScreen.screens.first { $0.frame.intersects(caret) }?.visibleFrame
+            ?? NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) }?.visibleFrame
+            ?? NSScreen.main?.visibleFrame ?? .zero
         let below = caret.minY - 6 - size.height
         let above = caret.maxY + 6
         var origin = NSPoint(x: caret.maxX + 6, y: preferAbove ? above : below)
         if preferAbove, origin.y + size.height > screen.maxY { origin.y = below }
         if !preferAbove, origin.y < screen.minY { origin.y = above }
         origin.x = min(max(origin.x, screen.minX + 4), screen.maxX - size.width - 4)
+        // Neither side fits (a tall selection, a caret scrolled off screen): stay on screen anyway.
+        origin.y = min(max(origin.y, screen.minY + 4), screen.maxY - size.height - 4)
         hiding = nil
         let wasVisible = panel.isVisible
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
