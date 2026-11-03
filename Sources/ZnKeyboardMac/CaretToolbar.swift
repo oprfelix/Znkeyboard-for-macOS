@@ -304,7 +304,7 @@ private struct CaretToolbarView: View {
                     .background(Color.accentColor, in: Capsule())
                 }
                 .buttonStyle(PressableStyle(hover: false))
-                .help(L.translateMenu)
+                .help(model.reading ? L.screenshotTarget : L.translateMenu)
                 .padding(.trailing, 4)
             }
         }

@@ -173,15 +173,18 @@ struct SettingsView: View {
 
     private var usagePage: some View {
         Form {
-            Section {
-                Picker(L.translateMenu, selection: $target) {
-                    ForEach(Languages.all) { language in
-                        Text("\(language.code) · \(language.displayName)").tag(language.code)
+            Section(L.languagesGroup) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker(L.translateTarget, selection: $target) {
+                        ForEach(Languages.all) { language in
+                            Text("\(language.code) · \(language.displayName)").tag(language.code)
+                        }
                     }
-                }
-                .onChange(of: target) { _, code in
-                    Preferences.translateTarget = Languages.language(code: code)
-                    onChange()
+                    .onChange(of: target) { _, code in
+                        Preferences.translateTarget = Languages.language(code: code)
+                        onChange()
+                    }
+                    Text(L.translateTargetNote).font(.caption).foregroundStyle(.secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -193,7 +196,9 @@ struct SettingsView: View {
                     .onChange(of: screenshotTarget) { _, code in Preferences.screenshotTarget = Languages.language(code: code) }
                     Text(L.screenshotTargetNote).font(.caption).foregroundStyle(.secondary)
                 }
+            }
 
+            Section(L.buttonsGroup) {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle(L.caretToolbar, isOn: $caretToolbar)
                         .onChange(of: caretToolbar) { _, value in Preferences.caretToolbar = value }

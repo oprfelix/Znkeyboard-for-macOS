@@ -16,11 +16,11 @@ enum L {
     // Menu
     static var polish: String { t("润色", "Polish") }
     static func translateTo(_ language: TranslateLanguage) -> String {
-        t("AI 翻译为 \(language.displayName)", "Translate to \(language.displayName)")
+        t("AI 翻译成\(language.displayName)", "Translate to \(language.displayName)")
     }
-    static var polishSelection: String { t("润色所选文字", "Polish Selected Text") }
+    static var polishSelection: String { t("润色选中文字", "Polish Selection") }
     static var translateShort: String { t("AI 翻译为", "Translate") }
-    static var translateMenu: String { t("翻译成", "Translate To") }
+    static var translateMenu: String { t("AI 翻译的语言", "Translation Language") }
     static var settings: String { t("设置…", "Settings…") }
     static var quit: String { t("退出 ZnKeyboard", "Quit ZnKeyboard") }
 
@@ -32,11 +32,12 @@ enum L {
     static var openSettings: String { t("打开设置", "Open Settings") }
     static var screenshotTranslate: String { t("截图翻译", "Screenshot Translate") }
     static var screenshotTranslateTo: String { t("截图翻译为", "Screenshot to") }
-    static var screenshotTarget: String { t("划词和截图翻译成", "Reading and screenshots translate to") }
+    static var screenshotTarget: String { t("划词和截图翻译成", "Reading and screenshots to") }
     static var screenshotTargetNote: String {
-        t("划词翻译和截图翻译共用；原文如果本身就是中文，会翻译成英文。图片只在本机识别，不会上传，只有识别出的文字会发给服务商。",
-          "Shared by reading and screenshot translation; Chinese text is translated into English instead. Images are read on this Mac and never uploaded; only the recognised text goes to the provider.")
+        t("原文是中文时翻成英文；图片只在本机识别，不会上传。", "Chinese text goes to English. Images are read on this Mac and never uploaded.")
     }
+    static var translateTarget: String { t("AI 翻译成", "Translate to") }
+    static var translateTargetNote: String { t("用于输入框里的「AI 翻译」。", "For Translate in text boxes.") }
     static var originalText: String { t("原文", "Original") }
     static var copyOriginal: String { t("复制原文", "Copy Original") }
     static var copyTranslation: String { t("复制译文", "Copy Translation") }
@@ -111,7 +112,7 @@ enum L {
     static var apiKeyPlaceholder: String { t("输入 API Key", "Enter your API key") }
     static var modelIDPlaceholder: String { t("输入模型 ID", "Enter a model ID") }
     static var chooseModel: String { t("选择模型", "Choose a model") }
-    static var apiPreset: String { t("接口", "Endpoint") }
+    static var apiPreset: String { t("服务地址", "Endpoint") }
     static var customPreset: String { t("自定义", "Custom") }
     static var deepSeekNote: String {
         t("地址已内置，填好 API Key 就能用，国内可直连。润色或翻译时，选中的文字会发给 DeepSeek。",
@@ -139,26 +140,22 @@ enum L {
     }
 
     static var usageSection: String { t("使用", "Usage") }
-    static var caretToolbar: String { t("输入框中选中文字后显示按钮", "Buttons on text selected in a text box") }
-    static var caretToolbarNote: String {
-        t("在输入框里用鼠标拖选或按 ⌘A 全选后，旁边会出现「润色」和「AI 翻译为」按钮。",
-          "Drag over text in a text box or press ⌘A, and Polish and Translate buttons appear beside it.")
-    }
-    static var readingToolbar: String { t("划词翻译", "Translate text you select while reading") }
-    static var readingToolbarNote: String {
-        t("在网页、文档里用鼠标选中文字后，旁边会出现「翻译为」按钮。",
-          "Select text on a web page or in a document with the mouse, and a Translate button appears beside it.")
-    }
+    static var languagesGroup: String { t("翻译语言", "Languages") }
+    static var buttonsGroup: String { t("选中文字时显示按钮", "Show buttons on selected text") }
+    static var caretToolbar: String { t("输入框", "In text boxes") }
+    static var caretToolbarNote: String { t("润色、AI 翻译", "Polish and Translate") }
+    static var readingToolbar: String { t("网页和文档", "On web pages and documents") }
+    static var readingToolbarNote: String { t("划词翻译", "Translate what you read") }
     static var readShort: String { t("翻译为", "Translate to") }
-    static var pinCard: String { t("固定：点击别处时不关闭", "Pin: stay open when clicking elsewhere") }
-    static var unpinCard: String { t("取消固定：点击别处时关闭", "Unpin: close when clicking elsewhere") }
+    static var pinCard: String { t("固定，点别处时不关闭", "Pin to keep it open") }
+    static var unpinCard: String { t("取消固定", "Unpin") }
     static var shortcutsSection: String { t("快捷键", "Shortcuts") }
     static var polishShortcut: String { t("润色", "Polish") }
     static var translateShortcut: String { t("AI 翻译", "Translate") }
     static var screenshotShortcut: String { t("截图翻译", "Screenshot translate") }
     static var shortcutsNote: String {
-        t("选中文字后按快捷键即可，按钮不出现的 App 也能用；截图翻译按下后拖出要翻译的区域。点击快捷键可以修改。",
-          "Select text and press a shortcut; it works even where the buttons don't appear. For screenshot translate, drag over the area to translate. Click a shortcut to change it.")
+        t("选中文字后按快捷键就能用，没有按钮的 App 里也行；截图翻译按下后框选要翻译的区域。点一下快捷键即可修改。",
+          "Select text and press a shortcut; it works even where no buttons appear. For screenshot translate, drag over the area to translate. Click a shortcut to change it.")
     }
     static var pressShortcut: String { t("按下新快捷键…", "Press keys…") }
     static var shortcutHint: String { t("点击后按下新的组合键，Esc 取消", "Click, then press the new combination; Esc cancels") }
