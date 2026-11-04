@@ -12,16 +12,21 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="0.4.3"
-BUILD="16"
+VERSION="0.4.4"
+BUILD="17"
 APP="build/ZnKeyboard.app"
 
-swift build -c release --arch arm64
-BIN="$(swift build -c release --arch arm64 --show-bin-path)/ZnKeyboardMac"
+# One app for Apple silicon and Intel Macs, so downloads and in-app updates need no choice of build.
+# Each architecture has its own build folder: sharing one breaks the second build after the first.
+BINS=()
+for ARCH in arm64 x86_64; do
+    swift build -c release --arch "$ARCH" --scratch-path ".build/$ARCH"
+    BINS+=("$(swift build -c release --arch "$ARCH" --scratch-path ".build/$ARCH" --show-bin-path)/ZnKeyboardMac")
+done
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/ZnKeyboardMac"
+lipo -create "${BINS[@]}" -output "$APP/Contents/MacOS/ZnKeyboardMac"
 sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD/" Resources/Info.plist > "$APP/Contents/Info.plist"
 cp -R Resources/prompts "$APP/Contents/Resources/prompts"
 # Regenerate with: swift scripts/make_icon.swift
