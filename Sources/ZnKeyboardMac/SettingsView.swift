@@ -18,6 +18,8 @@ struct SettingsView: View {
     @State private var caretToolbar = Preferences.caretToolbar
     @State private var readingToolbar = Preferences.readingToolbar
     @State private var uiLanguage = Preferences.uiLanguage
+    @State private var openAtLogin = LoginItem.isEnabled
+    @State private var loginItemNeedsApproval = LoginItem.needsApproval
     @State private var automaticUpdates = Preferences.automaticUpdateChecks
     @State private var anonymousStats = Preferences.anonymousStats
     @State private var trusted = TextBridge.isTrusted
@@ -306,6 +308,20 @@ struct SettingsView: View {
                     HStack(spacing: 10) {
                         Text(Self.version).foregroundStyle(.secondary)
                         Button(L.checkForUpdates) { Updates.check() }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(L.openAtLogin, isOn: Binding(
+                        get: { openAtLogin },
+                        set: { value in
+                            LoginItem.set(value)
+                            openAtLogin = LoginItem.isEnabled
+                            loginItemNeedsApproval = LoginItem.needsApproval
+                        }
+                    ))
+                    Text(loginItemNeedsApproval ? L.openAtLoginApproval : L.openAtLoginNote).font(.caption).foregroundStyle(.secondary)
+                    if loginItemNeedsApproval {
+                        Button(L.openLoginItems) { LoginItem.openSystemSettings() }
                     }
                 }
                 VStack(alignment: .leading, spacing: 4) {

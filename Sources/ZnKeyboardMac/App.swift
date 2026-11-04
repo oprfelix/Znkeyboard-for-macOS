@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         statusItem = item
 
         CaretLog.noteLaunch()
+        LoginItem.enableOnce()
         Updates.startAutomaticChecks()
         for action in ShortcutAction.allCases {
             let ok = registerHotKey(action, Preferences.shortcut(for: action))

@@ -74,6 +74,10 @@ enum L {
     static var updateDamaged: String { t("下载的安装包不完整。", "The downloaded package is incomplete.") }
     static var updateNotTrusted: String { t("新版本的签名校验没有通过，为安全起见没有安装。", "The new version's signature didn't check out, so it wasn't installed.") }
     static var updateNoPermission: String { t("没有权限替换「应用程序」里的 ZnKeyboard。", "ZnKeyboard in Applications couldn't be replaced (no permission).") }
+    static var openAtLogin: String { t("开机自动启动", "Open at login") }
+    static var openAtLoginNote: String { t("登录 Mac 后在菜单栏待命", "Wait in the menu bar after you log in") }
+    static var openAtLoginApproval: String { t("还需要在系统设置的“登录项”里允许 ZnKeyboard", "Allow ZnKeyboard under Login Items in System Settings too") }
+    static var openLoginItems: String { t("打开登录项设置", "Open Login Items") }
     static var automaticUpdates: String { t("自动检查更新", "Check for updates automatically") }
     static var automaticUpdatesNote: String { t("每天检查一次，有新版本时提醒你，点一下即可更新。", "Checks once a day and offers new versions; one click installs them.") }
     static var anonymousStats: String { t("发送匿名使用统计", "Send anonymous usage statistics") }

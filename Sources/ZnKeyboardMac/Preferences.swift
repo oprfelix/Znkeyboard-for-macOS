@@ -67,6 +67,12 @@ enum Preferences {
     }
 
     /// The anonymous daily ping behind the numbers on znkeyboard.2amz.com. On by default.
+    /// Set once opening at login was turned on by default; from then on it is the user's choice.
+    static var loginItemEnabledOnce: Bool {
+        get { UserDefaults.standard.bool(forKey: "loginItemEnabledOnce") }
+        set { UserDefaults.standard.set(newValue, forKey: "loginItemEnabledOnce") }
+    }
+
     static var anonymousStats: Bool {
         get { UserDefaults.standard.object(forKey: "anonymousStats") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "anonymousStats") }
