@@ -228,6 +228,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             // The sidebar runs up under the title bar, as in System Settings; the page title shows in the toolbar.
             window.styleMask = [.titled, .closable, .fullSizeContentView]
             window.toolbarStyle = .unified
+            // A settings window only closes: no greyed-out minimize and zoom buttons beside the close button.
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isHidden = true
             window.isReleasedWhenClosed = false
             window.delegate = self
             window.center()
