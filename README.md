@@ -1,8 +1,8 @@
 # ZnKeyboard for macOS
 
 Menu bar companion to ZnKeyboard for Android: polish or translate selected text in any app, using
-the same prompts and 14 target languages. Providers: Google Gemini (Flash-Lite models only) or any
-OpenAI-compatible API, with a DeepSeek preset (address built in, `deepseek-flash` by default) or a custom address,
+the same prompts and 14 target languages. Providers: DeepSeek (address built in, `deepseek-flash` by
+default), Google Gemini (Flash-Lite models only), or any OpenAI-compatible API at an address you enter,
 each with its own key.
 
 - **⇧⌘1** translate the selection to read · **⇧⌘E** polish it · **⇧⌘R** translate it into the target language

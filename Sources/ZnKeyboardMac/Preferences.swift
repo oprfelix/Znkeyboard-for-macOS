@@ -1,39 +1,46 @@
 import Foundation
 import Security
 
-/// Where requests go: Google Gemini's built-in endpoint, or any OpenAI-compatible server
-/// (OpenAI, DeepSeek, OpenRouter…). Each keeps its own key and model.
+/// Where requests go: DeepSeek's or Google Gemini's built-in endpoint, or any OpenAI-compatible
+/// server at a typed address (OpenAI, OpenRouter…). Each keeps its own key and model.
 enum Provider: String, CaseIterable, Identifiable {
+    case deepseek
     case gemini
     case openAICompatible = "openai"
 
     var id: String { rawValue }
-    var displayName: String { self == .gemini ? "Google Gemini" : L.openAICompatible }
-    fileprivate var keychainAccount: String { self == .gemini ? "gemini-api-key" : "openai-api-key" }
-}
-
-/// Endpoints the OpenAI-compatible provider offers without typing an address.
-enum APIPreset: String, CaseIterable, Identifiable {
-    case deepseek
-    case custom
-
-    var id: String { rawValue }
-    var displayName: String { self == .deepseek ? "DeepSeek" : L.customPreset }
-    /// nil for custom: the typed address is used.
-    var baseURL: String? { self == .deepseek ? "https://api.deepseek.com" : nil }
+    var displayName: String {
+        switch self {
+        case .deepseek: "DeepSeek"
+        case .gemini: "Google Gemini"
+        case .openAICompatible: L.openAICompatible
+        }
+    }
+    fileprivate var keychainAccount: String {
+        switch self {
+        case .deepseek: "deepseek-api-key"
+        case .gemini: "gemini-api-key"
+        case .openAICompatible: "openai-api-key"
+        }
+    }
 }
 
 /// Settings that persist across launches. API keys live in the Keychain, the rest in UserDefaults.
 enum Preferences {
     static let defaultModel = "gemini-3.5-flash-lite"
-    // The OpenAI-compatible provider starts on the DeepSeek preset; a custom address starts here.
+    // Where the OpenAI-compatible provider's address starts before the user types their own.
     static let defaultOpenAIBaseURL = "https://api.openai.com/v1"
-    static let defaultOpenAIModel = "deepseek-flash"
+    static let deepSeekBaseURL = "https://api.deepseek.com"
+    static let defaultDeepSeekModel = "deepseek-flash"
     private static let providerKey = "provider"
     private static let modelKey = "geminiModel"
     private static let openAIModelKey = "openAIModel"
     private static let openAIBaseURLKey = "openAIBaseURL"
-    private static let presetKey = "apiPreset"
+    private static let deepSeekModelKey = "deepSeekModel"
+    // Through 0.4.5 DeepSeek was a preset of the OpenAI-compatible provider, with one shared key.
+    private static let legacyPresetKey = "apiPreset"
+    private static let legacyPresetDeepSeek = "deepseek"
+    private static let deepSeekSplitKey = "deepSeekPresetSplit"
     private static let targetKey = "translateTarget"
     private static let uiLanguageKey = "uiLanguage"
     private static let caretToolbarKey = "caretToolbar"
@@ -126,31 +133,25 @@ enum Preferences {
         case .gemini:
             let stored = UserDefaults.standard.string(forKey: modelKey) ?? defaultModel
             return GeminiModels.isLite(stored) ? stored : defaultModel
+        case .deepseek:
+            let stored = UserDefaults.standard.string(forKey: deepSeekModelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
+            return stored.isEmpty ? defaultDeepSeekModel : stored
         case .openAICompatible:
-            let stored = UserDefaults.standard.string(forKey: openAIModelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
-            return stored.isEmpty ? defaultOpenAIModel : stored
+            // No default: a model ID only means something on the address the user typed.
+            return UserDefaults.standard.string(forKey: openAIModelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
         }
     }
 
     static func setModel(_ model: String, for provider: Provider) {
-        UserDefaults.standard.set(model.trimmingCharacters(in: .whitespaces), forKey: provider == .gemini ? modelKey : openAIModelKey)
-    }
-
-    /// Before presets the address was typed, so DeepSeek's address (or none yet) reads as the
-    /// DeepSeek preset and anything else as custom.
-    static var apiPreset: APIPreset {
-        get {
-            if let stored = APIPreset(rawValue: UserDefaults.standard.string(forKey: presetKey) ?? "") { return stored }
-            let typed = UserDefaults.standard.string(forKey: openAIBaseURLKey)?.trimmingCharacters(in: .whitespaces) ?? ""
-            return typed.isEmpty || typed.contains("api.deepseek.com") ? .deepseek : .custom
+        let key = switch provider {
+        case .deepseek: deepSeekModelKey
+        case .gemini: modelKey
+        case .openAICompatible: openAIModelKey
         }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: presetKey) }
+        UserDefaults.standard.set(model.trimmingCharacters(in: .whitespaces), forKey: key)
     }
 
-    /// The address the OpenAI-compatible provider calls: the preset's, or the typed one.
-    static var compatibleBaseURL: String { apiPreset.baseURL ?? openAIBaseURL }
-
-    /// The typed address, used by the custom preset.
+    /// The address the OpenAI-compatible provider calls; the other providers have theirs built in.
     static var openAIBaseURL: String {
         get {
             let stored = UserDefaults.standard.string(forKey: openAIBaseURLKey)?.trimmingCharacters(in: .whitespaces) ?? ""
@@ -159,18 +160,46 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespaces), forKey: openAIBaseURLKey) }
     }
 
-    /// 0.2.0–0.2.1 had a fixed DeepSeek provider instead of the OpenAI-compatible one: it becomes
-    /// the OpenAI-compatible provider pointed at DeepSeek, Keychain key included. The old key is
-    /// removed only once it was read, so a denied Keychain prompt keeps it for the next launch.
+    /// One-time move of the DeepSeek preset to its own provider. 0.2.0–0.2.1 already stored
+    /// "deepseek" as the provider, so those setups go through the preset first; the flag keeps a
+    /// later launch from reading today's DeepSeek provider as that old one. Before presets the
+    /// address was typed, so with no stored preset DeepSeek's address (or none yet) counts as it.
+    /// A key that is there but can't be read yet (a denied Keychain prompt) stops the move, and
+    /// the old key is cleared only once the new one reads back, so neither can lose it.
     static func migrate() {
         let defaults = UserDefaults.standard
-        guard defaults.string(forKey: providerKey) == "deepseek" else { return }
-        let oldKey = Keychain.read(account: "deepseek-api-key")
-        if let oldKey, apiKey(for: .openAICompatible).isEmpty { setAPIKey(oldKey, for: .openAICompatible) }
-        apiPreset = .deepseek
-        setModel(defaultOpenAIModel, for: .openAICompatible)
-        provider = .openAICompatible
-        if oldKey != nil { Keychain.write("", account: "deepseek-api-key") }
+        guard !defaults.bool(forKey: deepSeekSplitKey) else { return }
+        let compatibleAccount = Provider.openAICompatible.keychainAccount
+        let deepSeekAccount = Provider.deepseek.keychainAccount
+        if defaults.string(forKey: providerKey) == Provider.deepseek.rawValue {
+            let oldKey = Keychain.read(account: deepSeekAccount)
+            guard oldKey != nil || !Keychain.exists(account: deepSeekAccount) else { return }
+            if let oldKey, apiKey(for: .openAICompatible).isEmpty { setAPIKey(oldKey, for: .openAICompatible) }
+            defaults.set(legacyPresetDeepSeek, forKey: legacyPresetKey)
+            setModel(defaultDeepSeekModel, for: .openAICompatible)
+            provider = .openAICompatible
+            if oldKey != nil { Keychain.write("", account: deepSeekAccount) }
+        }
+
+        let typed = defaults.string(forKey: openAIBaseURLKey)?.trimmingCharacters(in: .whitespaces) ?? ""
+        let onDeepSeek = defaults.string(forKey: legacyPresetKey).map { $0 == legacyPresetDeepSeek }
+            ?? (typed.isEmpty || typed.contains("api.deepseek.com"))
+        if onDeepSeek {
+            let key = Keychain.read(account: compatibleAccount)
+            guard key != nil || !Keychain.exists(account: compatibleAccount) else { return }
+            if let key {
+                setAPIKey(key, for: .deepseek)
+                guard apiKey(for: .deepseek) == key.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+                Keychain.write("", account: compatibleAccount)
+            }
+            let model = defaults.string(forKey: openAIModelKey) ?? ""
+            if model.hasPrefix("deepseek") { setModel(model, for: .deepseek) }
+            defaults.removeObject(forKey: openAIModelKey)
+            if typed.contains("api.deepseek.com") { defaults.removeObject(forKey: openAIBaseURLKey) }
+            if provider == .openAICompatible { provider = .deepseek }
+        }
+        defaults.removeObject(forKey: legacyPresetKey)
+        defaults.set(true, forKey: deepSeekSplitKey)
     }
 
     /// The global shortcut for [action], or its default.
@@ -205,7 +234,8 @@ enum Preferences {
     /// The client for the selected provider and its key, model and endpoint.
     static func client() throws -> AIClient {
         let provider = provider
-        return try AIClient(provider: provider, baseURL: compatibleBaseURL, apiKey: apiKey(for: provider), model: model(for: provider))
+        let baseURL = provider == .deepseek ? deepSeekBaseURL : openAIBaseURL
+        return try AIClient(provider: provider, baseURL: baseURL, apiKey: apiKey(for: provider), model: model(for: provider))
     }
 }
 
@@ -219,6 +249,11 @@ enum Keychain {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
+    }
+
+    /// Whether an item is there, without touching its secret, so a denied read isn't taken for none.
+    static func exists(account: String) -> Bool {
+        SecItemCopyMatching(query(account) as CFDictionary, nil) == errSecSuccess
     }
 
     static func read(account: String) -> String? {

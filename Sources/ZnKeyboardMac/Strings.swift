@@ -94,6 +94,7 @@ enum L {
 
     // Errors
     static var needKey: String { t("请先在设置里填写 API Key。", "Add your API key in Settings first.") }
+    static var needModel: String { t("请先在设置里填写模型。", "Enter a model in Settings first.") }
     static var badEndpoint: String {
         t("API 地址无效，请在设置里填写以 https:// 开头的地址。", "The API address is invalid. Enter one starting with https:// in Settings.")
     }
@@ -125,8 +126,6 @@ enum L {
     static var apiKeyPlaceholder: String { t("输入 API Key", "Enter your API key") }
     static var modelIDPlaceholder: String { t("输入模型 ID", "Enter a model ID") }
     static var chooseModel: String { t("选择模型", "Choose a model") }
-    static var apiPreset: String { t("服务地址", "Endpoint") }
-    static var customPreset: String { t("自定义", "Custom") }
     static var deepSeekNote: String {
         t("地址已内置，填好 API Key 就能用，国内可直连。润色或翻译时，选中的文字会发给 DeepSeek。",
           "The address is built in, so a key is all you need; fast in mainland China. When you polish or translate, the selected text is sent to DeepSeek.")
@@ -140,7 +139,7 @@ enum L {
     static var keyInvalid: String { t("API Key 无效或没有权限，请检查是否复制完整、是否已过期。", "This API key was rejected. Check it was copied in full and is still active.") }
     static func keyUnverified(_ reason: String) -> String { t("暂时无法验证 API Key：\(reason)", "Couldn't check the API key: \(reason)") }
     static var regionUnsupported: String {
-        t("Gemini 在你所在的地区不可用，请改用 OpenAI 兼容（DeepSeek），或通过代理网络使用。", "Gemini isn't available in your region. Use OpenAI compatible (DeepSeek), or reach Gemini through a proxy.")
+        t("Gemini 在你所在的地区不可用，请改用 DeepSeek，或通过代理网络使用。", "Gemini isn't available in your region. Use DeepSeek, or reach Gemini through a proxy.")
     }
     static var getDeepSeekKey: String { t("在 DeepSeek 开放平台获取", "Get one on the DeepSeek platform") }
     static var noKeyYet: String { t("还没有 Key？", "No key yet?") }

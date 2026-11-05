@@ -224,7 +224,7 @@ final class Controller {
                 ?? ((error as? URLError) != nil ? L.networkFailed : error.localizedDescription)
             // Key, model or endpoint problems are fixed in Settings; anything else may pass on a retry.
             let fixableInSettings: Bool = switch error as? RewriteError {
-            case .missingKey, .badEndpoint, .http(400, _), .http(401, _), .http(403, _), .http(404, _): true
+            case .missingKey, .missingModel, .badEndpoint, .http(400, _), .http(401, _), .http(403, _), .http(404, _): true
             default: false
             }
             panel.showError(message, offerSettings: fixableInSettings, canRetry: !fixableInSettings)

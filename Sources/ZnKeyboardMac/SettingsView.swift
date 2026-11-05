@@ -7,7 +7,6 @@ struct SettingsView: View {
     var applyShortcut: (ShortcutAction, Shortcut?) -> ShortcutResult = { _, shortcut in .ok(shortcut ?? .init(keyCode: 0, modifiers: 0, key: "")) }
 
     @State private var provider = Preferences.provider
-    @State private var preset = Preferences.apiPreset
     @State private var baseURL = Preferences.openAIBaseURL
     @State private var apiKey = Preferences.apiKey(for: Preferences.provider)
     @State private var storedKey = Preferences.apiKey(for: Preferences.provider)
@@ -71,9 +70,9 @@ struct SettingsView: View {
             trusted = TextBridge.isTrusted
             screenTrusted = ScreenText.hasPermission
         }
-        .task(id: "\(provider.rawValue)|\(preset.rawValue)|\(baseURL)") {
+        .task(id: "\(provider.rawValue)|\(baseURL)") {
             // A typed address settles before it is checked.
-            if provider == .openAICompatible, preset == .custom { try? await Task.sleep(for: .milliseconds(600)) }
+            if provider == .openAICompatible { try? await Task.sleep(for: .milliseconds(600)) }
             if !Task.isCancelled { await loadModels() }
         }
     }
@@ -86,12 +85,6 @@ struct SettingsView: View {
                 }
 
                 if provider == .openAICompatible {
-                    Picker(L.apiPreset, selection: Binding(get: { preset }, set: switchPreset)) {
-                        ForEach(APIPreset.allCases) { Text($0.displayName).tag($0) }
-                    }
-                }
-
-                if provider == .openAICompatible, preset == .custom {
                     LabeledContent(L.apiBaseURL) {
                         TextField(Preferences.defaultOpenAIBaseURL, text: $baseURL)
                             .labelsHidden()
@@ -122,7 +115,7 @@ struct SettingsView: View {
                     if !Task.isCancelled { saveKey() }
                 }
                 if storedKey.isEmpty {
-                    if provider == .gemini || preset == .deepseek {
+                    if provider != .openAICompatible {
                         HStack(spacing: 4) {
                             Text(L.noKeyYet).foregroundStyle(.secondary)
                             if provider == .gemini {
@@ -150,7 +143,7 @@ struct SettingsView: View {
                         HStack {
                             TextField(L.modelIDPlaceholder, text: $model)
                                 .labelsHidden()
-                                .onChange(of: model) { _, value in Preferences.setModel(value, for: .openAICompatible) }
+                                .onChange(of: model) { _, value in Preferences.setModel(value, for: provider) }
                             if !models.isEmpty {
                                 Menu {
                                     ForEach(models, id: \.self) { id in Button(id) { model = id } }
@@ -166,7 +159,7 @@ struct SettingsView: View {
                     }
                 }
             } footer: {
-                Text(provider == .gemini ? L.modelNote : preset == .deepseek ? L.deepSeekNote : L.openAINote)
+                Text(provider == .gemini ? L.modelNote : provider == .deepseek ? L.deepSeekNote : L.openAINote)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -393,17 +386,6 @@ struct SettingsView: View {
         keyCheck = .idle
         if apiKey.isEmpty { keyFocused = true } else { releaseFocus() }
         onChange()
-    }
-
-    /// DeepSeek's address is built in; a model typed for another service would not exist there.
-    private func switchPreset(_ next: APIPreset) {
-        Preferences.apiPreset = next
-        preset = next
-        if next == .deepseek, !model.hasPrefix("deepseek") {
-            model = Preferences.defaultOpenAIModel
-            Preferences.setModel(model, for: .openAICompatible)
-        }
-        models = []
     }
 
     private func saveBaseURL() {

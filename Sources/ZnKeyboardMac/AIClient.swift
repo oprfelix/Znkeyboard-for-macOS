@@ -10,6 +10,7 @@ enum RewriteMode {
 
 enum RewriteError: LocalizedError {
     case missingKey
+    case missingModel
     case badEndpoint
     case tooLong
     case noChange
@@ -19,6 +20,7 @@ enum RewriteError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingKey: L.needKey
+        case .missingModel: L.needModel
         case .badEndpoint: L.badEndpoint
         case .tooLong: L.tooLong
         case .noChange: L.noChange
@@ -44,7 +46,7 @@ struct AIClient {
     let apiKey: String
     let model: String
 
-    /// [baseURL] is used for OpenAI-compatible servers only; it must be HTTPS.
+    /// [baseURL] is used for every provider but Gemini; it must be HTTPS.
     init(provider: Provider, baseURL: String, apiKey: String, model: String) throws {
         self.provider = provider
         self.apiKey = apiKey
@@ -60,6 +62,7 @@ struct AIClient {
 
     func rewrite(_ text: String, mode: RewriteMode) async throws -> String {
         guard !apiKey.isEmpty else { throw RewriteError.missingKey }
+        guard !model.isEmpty else { throw RewriteError.missingModel }
         guard text.count <= Self.maxSourceCharacters else { throw RewriteError.tooLong }
         do {
             return try await withRetries { try await request(text, mode: mode, strictSchema: true) }
