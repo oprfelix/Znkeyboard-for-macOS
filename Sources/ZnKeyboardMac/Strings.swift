@@ -16,12 +16,12 @@ enum L {
     // Menu
     static var polish: String { t("润色", "Polish") }
     static func translateTo(_ language: TranslateLanguage) -> String {
-        t("AI 翻译成\(language.displayName)", "Translate to \(language.displayName)")
+        t("AI 翻译为\(language.displayName)", "Translate to \(language.displayName)")
     }
     static var polishSelection: String { t("润色选中文字", "Polish Selection") }
     static var readSelection: String { t("划词翻译", "Translate Selection") }
-    static var translateShort: String { t("AI 翻译为", "Translate") }
-    static var translateMenu: String { t("AI 翻译的语言", "Translation Language") }
+    static var translateShort: String { t("AI 翻译为", "Translate to") }
+    static var translateMenu: String { t("AI 翻译语言", "Translation Language") }
     static var settings: String { t("设置…", "Settings…") }
     static var quit: String { t("退出 ZnKeyboard", "Quit ZnKeyboard") }
 
@@ -33,11 +33,11 @@ enum L {
     static var openSettings: String { t("打开设置", "Open Settings") }
     static var screenshotTranslate: String { t("截图翻译", "Screenshot Translate") }
     static var screenshotTranslateTo: String { t("截图翻译为", "Screenshot to") }
-    static var screenshotTarget: String { t("划词和截图翻译成", "Reading and screenshots to") }
+    static var screenshotTarget: String { t("划词和截图翻译为", "Selection and screenshots to") }
     static var screenshotTargetNote: String {
         t("原文是中文时翻成英文；图片只在本机识别，不会上传。", "Chinese text goes to English. Images are read on this Mac and never uploaded.")
     }
-    static var translateTarget: String { t("AI 翻译成", "Translate to") }
+    static var translateTarget: String { t("AI 翻译为", "Translate to") }
     static var translateTargetNote: String { t("用于输入框里的「AI 翻译」。", "For Translate in text boxes.") }
     static var originalText: String { t("原文", "Original") }
     static var copyOriginal: String { t("复制原文", "Copy Original") }
@@ -49,7 +49,7 @@ enum L {
     static var relaunch: String { t("重新打开 ZnKeyboard", "Reopen ZnKeyboard") }
     static var needScreenRecording: String {
         t("截图翻译需要「屏幕录制」权限。点「去授权」打开 ZnKeyboard 的开关，然后在设置的「权限」页点「重新打开 ZnKeyboard」。",
-          "Screenshot translation needs Screen Recording access. Click Grant Access, turn on ZnKeyboard, then click Reopen ZnKeyboard on the Permission page in Settings.")
+          "Screenshot translation needs Screen Recording access. Click Grant Access, turn on ZnKeyboard, then click Reopen ZnKeyboard on the Permissions page in Settings.")
     }
     static var retry: String { t("重试", "Try Again") }
     static var regenerate: String { t("重新生成", "Regenerate") }
@@ -76,7 +76,7 @@ enum L {
     static var updateNoPermission: String { t("没有权限替换「应用程序」里的 ZnKeyboard。", "ZnKeyboard in Applications couldn't be replaced (no permission).") }
     static var openAtLogin: String { t("开机自动启动", "Open at login") }
     static var openAtLoginNote: String { t("登录 Mac 后在菜单栏待命", "Wait in the menu bar after you log in") }
-    static var openAtLoginApproval: String { t("还需要在系统设置的“登录项”里允许 ZnKeyboard", "Allow ZnKeyboard under Login Items in System Settings too") }
+    static var openAtLoginApproval: String { t("还需要在系统设置的「登录项」里允许 ZnKeyboard", "Allow ZnKeyboard under Login Items in System Settings too") }
     static var openLoginItems: String { t("打开登录项设置", "Open Login Items") }
     static var automaticUpdates: String { t("自动检查更新", "Check for updates automatically") }
     static var automaticUpdatesNote: String { t("每天检查一次，有新版本时提醒你，点一下即可更新。", "Checks once a day and offers new versions; one click installs them.") }
@@ -101,7 +101,7 @@ enum L {
     static var noSelection: String { t("请先选中要处理的文字。", "Select some text first.") }
     static var tooLong: String { t("文字太长，请分段处理（最多 5000 字）。", "The text is too long; do it in parts (5,000 characters max).") }
     static var noChange: String { t("没有需要修改的地方。", "Nothing to change.") }
-    static var keyRejected: String { t("请求被拒绝，请检查 API Key 和模型。", "The request was rejected. Check your API key and model.") }
+    static var keyRejected: String { t("服务商拒绝了请求，请检查 API Key 和模型。", "The request was rejected. Check your API key and model.") }
     static var badResponse: String { t("AI 没有返回可用的结果，请再试一次。", "The AI returned nothing usable. Try again.") }
     static func providerBusy(_ code: Int) -> String {
         t("AI 服务商暂时繁忙（\(code)），自动重试后仍未成功。请稍后再试，或在设置里换用其他服务商。",
@@ -177,7 +177,7 @@ enum L {
     static var shortcutUsedByOther: String { t("另一个功能已在用这个快捷键。", "The other action already uses this shortcut.") }
     static var shortcutTaken: String { t("这个快捷键已被其他 App 占用，换一个试试。", "Another app already uses this shortcut. Try another.") }
 
-    static var permission: String { t("权限", "Permission") }
+    static var permission: String { t("权限", "Permissions") }
     static var accessibility: String { t("辅助功能", "Accessibility") }
     static var granted: String { t("已开启", "On") }
     static var notGranted: String { t("未开启", "Off") }
