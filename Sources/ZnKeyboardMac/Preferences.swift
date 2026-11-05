@@ -162,8 +162,8 @@ enum Preferences {
 
     /// One-time move of the DeepSeek preset to its own provider. 0.2.0–0.2.1 already stored
     /// "deepseek" as the provider, so those setups go through the preset first; the flag keeps a
-    /// later launch from reading today's DeepSeek provider as that old one. Before presets the
-    /// address was typed, so with no stored preset DeepSeek's address (or none yet) counts as it.
+    /// later launch from reading today's DeepSeek provider as that old one. DeepSeek's address
+    /// counts too, typed before presets or under Custom, and so does no address with no preset.
     /// A key that is there but can't be read yet (a denied Keychain prompt) stops the move, and
     /// the old key is cleared only once the new one reads back, so neither can lose it.
     static func migrate() {
@@ -182,8 +182,8 @@ enum Preferences {
         }
 
         let typed = defaults.string(forKey: openAIBaseURLKey)?.trimmingCharacters(in: .whitespaces) ?? ""
-        let onDeepSeek = defaults.string(forKey: legacyPresetKey).map { $0 == legacyPresetDeepSeek }
-            ?? (typed.isEmpty || typed.contains("api.deepseek.com"))
+        let onDeepSeek = typed.contains("api.deepseek.com")
+            || defaults.string(forKey: legacyPresetKey).map { $0 == legacyPresetDeepSeek } ?? typed.isEmpty
         if onDeepSeek {
             let key = Keychain.read(account: compatibleAccount)
             guard key != nil || !Keychain.exists(account: compatibleAccount) else { return }
