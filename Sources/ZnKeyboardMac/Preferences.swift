@@ -70,9 +70,10 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue, forKey: caretToolbarKey) }
     }
 
-    /// The 翻译为 button next to text selected while reading (web pages, documents). Off by default.
+    /// The 翻译为 button next to text selected while reading (web pages, documents): 划词翻译,
+    /// which has no shortcut of its own. On by default (since 0.4.7).
     static var readingToolbar: Bool {
-        get { UserDefaults.standard.bool(forKey: readingToolbarKey) }
+        get { UserDefaults.standard.object(forKey: readingToolbarKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: readingToolbarKey) }
     }
 

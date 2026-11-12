@@ -19,7 +19,6 @@ enum L {
         t("AI 翻译为\(language.displayName)", "Translate to \(language.displayName)")
     }
     static var polishSelection: String { t("润色选中文字", "Polish Selection") }
-    static var readSelection: String { t("划词翻译", "Translate Selection") }
     static var translateShort: String { t("AI 翻译为", "Translate to") }
     static var translateMenu: String { t("AI 翻译语言", "Translation Language") }
     static var settings: String { t("设置…", "Settings…") }
@@ -162,13 +161,11 @@ enum L {
     static var pinCard: String { t("固定，点别处时不关闭", "Pin to keep it open") }
     static var unpinCard: String { t("取消固定", "Unpin") }
     static var shortcutsSection: String { t("快捷键", "Shortcuts") }
-    static var polishShortcut: String { t("润色", "Polish") }
     static var translateShortcut: String { t("AI 翻译", "Translate") }
     static var screenshotShortcut: String { t("截图翻译", "Screenshot translate") }
-    static var readShortcut: String { t("划词翻译", "Translate selection") }
     static var shortcutsNote: String {
-        t("选中文字后按快捷键就能用，没有按钮的 App 里也行；截图翻译按下后框选要翻译的区域。点一下快捷键即可修改。",
-          "Select text and press a shortcut; it works even where no buttons appear. For screenshot translate, drag over the area to translate. Click a shortcut to change it.")
+        t("选中文字后按「AI 翻译」：输入框里的文字直接翻译替换，网页和文档里的文字弹出译文，没有按钮的 App 里也行。截图翻译按下后框选要翻译的区域。点一下快捷键即可修改。",
+          "Select text and press Translate: text in a text box is translated in place, text on a web page or in a document gets a translation to read, even where no buttons appear. For screenshot translate, drag over the area to translate. Click a shortcut to change it.")
     }
     static var pressShortcut: String { t("按下新快捷键…", "Press keys…") }
     static var shortcutHint: String { t("点击后按下新的组合键，Esc 取消", "Click, then press the new combination; Esc cancels") }

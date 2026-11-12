@@ -61,10 +61,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func registerHotKey(_ action: ShortcutAction, _ shortcut: Shortcut) -> Bool {
         HotKeys.shared.register(id: action.hotKeyID, shortcut: shortcut) { [weak self] in
             switch action {
-            case .polish: self?.controller.run(.polish)
-            case .translate: self?.controller.run(.translate(Preferences.translateTarget))
+            case .translate:
+                // Text that can't be edited (a web page, a document) gets a translation to read
+                // instead, so one shortcut serves both.
+                let app = NSWorkspace.shared.frontmostApplication
+                if let app, FocusedField.focusIsEditable(in: app) == false {
+                    self?.controller.run(.read(Preferences.screenshotTarget, screenshot: false))
+                } else {
+                    self?.controller.run(.translate(Preferences.translateTarget))
+                }
             case .screenshot: self?.controller.runScreenshot()
-            case .read: self?.controller.run(.read(Preferences.screenshotTarget, screenshot: false))
             }
         }
     }
@@ -93,11 +99,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             menu.addItem(.separator())
         }
 
-        let read = NSMenuItem(title: L.readSelection, action: #selector(readSelection), keyEquivalent: "")
-        read.image = Self.symbol("text.magnifyingglass")
-        Self.showShortcut(Preferences.shortcut(for: .read), on: read)
-        menu.addItem(read)
-
         let screenshot = NSMenuItem(title: L.screenshotTranslate, action: #selector(screenshotTranslate), keyEquivalent: "")
         screenshot.image = Self.symbol("text.viewfinder")
         Self.showShortcut(Preferences.shortcut(for: .screenshot), on: screenshot)
@@ -105,7 +106,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
         let polish = NSMenuItem(title: L.polishSelection, action: #selector(polish), keyEquivalent: "")
         polish.image = Self.symbol("sparkles")
-        Self.showShortcut(Preferences.shortcut(for: .polish), on: polish)
         menu.addItem(polish)
 
         let target = Preferences.translateTarget
@@ -166,7 +166,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     @objc private func translate() { runAfterMenuCloses(.translate(Preferences.translateTarget)) }
 
-    @objc private func readSelection() { runAfterMenuCloses(.read(Preferences.screenshotTarget, screenshot: false)) }
 
     @objc private func chooseLanguage(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }

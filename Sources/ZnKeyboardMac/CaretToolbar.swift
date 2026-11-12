@@ -207,8 +207,7 @@ final class CaretToolbar {
     /// always inside the visible part of the screen it is on; fades in.
     private func place(_ caret: NSRect, preferAbove: Bool) {
         guard let content = panel.contentView else { return }
-        model.shortcutHints = (Preferences.shortcut(for: .polish).display,
-                               Preferences.shortcut(for: model.reading ? .read : .translate).display)
+        model.translateHint = Preferences.shortcut(for: .translate).display
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize
         let screen = NSScreen.screens.first { $0.frame.intersects(caret) }?.visibleFrame
@@ -269,8 +268,8 @@ final class CaretToolbarModel: ObservableObject {
     @Published var language = "EN"
     /// Showing for read-only text: translate only, into the reading language.
     @Published var reading = false
-    /// Shown in the buttons' tooltips, e.g. "⇧⌘R".
-    @Published var shortcutHints = ("", "")
+    /// The AI 翻译 shortcut, shown in the translate button's tooltip, e.g. "⇧⌘E".
+    @Published var translateHint = ""
     var onPolish: () -> Void = {}
     var onTranslate: () -> Void = {}
     var onChooseLanguage: () -> Void = {}
@@ -287,7 +286,7 @@ private struct CaretToolbarView: View {
                         .padding(.horizontal, 10)
                         .frame(height: 26)
                 }
-                .help("\(L.polish)  \(model.shortcutHints.0)")
+                .help(L.polish)
                 Divider().frame(height: 16)
             }
             HStack(spacing: 4) {
@@ -297,7 +296,7 @@ private struct CaretToolbarView: View {
                         .padding(.trailing, 2)
                         .frame(height: 26)
                 }
-                .help(model.reading ? "\(L.readShort) \(model.language)  \(model.shortcutHints.1)" : "\(L.translateShort) \(model.language)  \(model.shortcutHints.1)")
+                .help(model.reading ? "\(L.readShort) \(model.language)  \(model.translateHint)" : "\(L.translateShort) \(model.language)  \(model.translateHint)")
                 Button(action: model.onChooseLanguage) {
                     HStack(spacing: 2) {
                         Text(model.language)

@@ -49,6 +49,14 @@ struct FocusedField {
         return nil
     }
 
+    /// Whether what has focus in [app] can be edited; nil when the app reports nothing focused.
+    static func focusIsEditable(in app: NSRunningApplication) -> Bool? {
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(appElement, 0.15)
+        guard let element = appElement.element(kAXFocusedUIElementAttribute) else { return nil }
+        return isEditable(element, role: element.string(kAXRoleAttribute) ?? "?")
+    }
+
     /// `elsewhere`: the focused field isn't under the mouse, so the selection in it is an old one.
     /// `reading`: text selected in something that can't be edited (a web page, a document being read).
     enum SelectionState { case notEditable, empty, selected, unknown, elsewhere, reading }

@@ -13,7 +13,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VERSION="0.4.7"
-BUILD="20"
+BUILD="21"
 APP="build/ZnKeyboard.app"
 
 # One app for Apple silicon and Intel Macs, so downloads and in-app updates need no choice of build.
