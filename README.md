@@ -1,14 +1,13 @@
 # ZnKeyboard for macOS
 
-Menu bar companion to ZnKeyboard for Android: polish or translate selected text in any app, using
-the same prompts and 14 target languages. Providers: DeepSeek (address built in, `deepseek-flash` by
-default), Google Gemini (Flash-Lite models only), or any OpenAI-compatible API at an address you enter,
-each with its own key.
+Menu bar companion to ZnKeyboard for Android and iPhone: translate selected text in any app, using
+the same prompts and 14 target languages. Providers: DeepSeek (address built in, `deepseek-flash`),
+Google (Flash-Lite models), or any OpenAI-compatible API at an address you enter, each with its own key.
 
-- **⇧⌘1** translate the selection to read · **⇧⌘E** polish it · **⇧⌘R** translate it into the target language
-  (all changeable in Settings)
-- Select text in a text box (e.g. ⌘A) and 润色 | AI 翻译为 [EN ▾] appears beside it, where the app reports the selection.
-- Reading translation (off by default, Settings → Usage): select text on a web page or in a document with the
+- **⇧⌘E** AI 翻译: text selected in a text box is translated in place into the target language; text selected
+  on a web page or in a document gets a translation to read (changeable in Settings, as is ⇧⌘2)
+- Select text in a text box (e.g. ⌘A) and AI 翻译为 [EN ▾] appears beside it, where the app reports the selection.
+- Reading translation (on by default, Settings → Usage): select text on a web page or in a document with the
   mouse and 翻译为 [ZH ▾] appears; it translates faithfully into the reading language screenshots use, and
   the card shows the original above the translation, each to copy.
 - Clicking elsewhere closes a translation to read (reading and screenshot); the pin in its header keeps it open,
@@ -21,7 +20,7 @@ each with its own key.
 
 Website: [znkeyboard.2amz.com](https://znkeyboard.2amz.com/) (mirror of oprfelix.github.io/znkeyboard). Updates come
 from znkeyboard.2amz.com, or from GitHub Releases when that fails. Once a day ZnKeyboard sends an anonymous ping
-(a random ID, platform, version and how many times it polished or translated; never any text) for the usage
+(a random ID, platform, version and how many times it translated; never any text) for the usage
 numbers on the website; Settings → General turns it off.
 
 Needs macOS 14+ and the Accessibility permission (System Settings → Privacy & Security →
