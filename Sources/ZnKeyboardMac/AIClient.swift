@@ -151,7 +151,7 @@ struct AIClient {
         return ["response_format", "json_schema", "schema"].contains { lower.contains($0) }
     }
 
-    /// Models this key can use: Flash-Lite only for Gemini, everything the server lists otherwise.
+    /// The models the server lists; also how a key is checked. Only a custom server's list is offered.
     func models() async throws -> [String] {
         guard !apiKey.isEmpty else { throw RewriteError.missingKey }
         var request = URLRequest(url: baseURL.appendingPathComponent("models"))
@@ -164,7 +164,7 @@ struct AIClient {
         }
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let ids = (json?["data"] as? [[String: Any]])?.compactMap { $0["id"] as? String } ?? []
-        return provider == .gemini ? GeminiModels.liteModels(from: ids) : Array(Set(ids)).sorted()
+        return Array(Set(ids.map { $0.replacingOccurrences(of: "models/", with: "") })).sorted()
     }
 
     /// A CJK character can cost a whole token while Latin text packs about three characters per

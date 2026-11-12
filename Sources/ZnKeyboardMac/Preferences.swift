@@ -12,8 +12,17 @@ enum Provider: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .deepseek: "DeepSeek"
-        case .gemini: "Google Gemini"
+        case .gemini: "Google"
         case .openAICompatible: L.openAICompatible
+        }
+    }
+    /// The models offered, as on iOS and Android: one fast, low-cost model for DeepSeek and the
+    /// Flash-Lite ones for Google, first the default. Empty for a custom server: its own list.
+    var models: [String] {
+        switch self {
+        case .deepseek: [Preferences.defaultDeepSeekModel]
+        case .gemini: [Preferences.defaultModel, "gemini-3.1-flash-lite"]
+        case .openAICompatible: []
         }
     }
     fileprivate var keychainAccount: String {
@@ -127,15 +136,15 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue, forKey: uiLanguageKey) }
     }
 
-    /// The model for [provider]. Gemini falls back to the default unless a Lite model is saved.
+    /// The model for [provider]. DeepSeek and Google fall back to their default unless a listed model is saved.
     static func model(for provider: Provider) -> String {
         switch provider {
         case .gemini:
-            let stored = UserDefaults.standard.string(forKey: modelKey) ?? defaultModel
-            return GeminiModels.isLite(stored) ? stored : defaultModel
+            let stored = UserDefaults.standard.string(forKey: modelKey) ?? ""
+            return provider.models.contains(stored) ? stored : defaultModel
         case .deepseek:
             let stored = UserDefaults.standard.string(forKey: deepSeekModelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
-            return stored.isEmpty ? defaultDeepSeekModel : stored
+            return provider.models.contains(stored) ? stored : defaultDeepSeekModel
         case .openAICompatible:
             // No default: a model ID only means something on the address the user typed.
             return UserDefaults.standard.string(forKey: openAIModelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
@@ -273,27 +282,5 @@ enum Keychain {
         item[kSecValueData as String] = Data(value.utf8)
         item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         SecItemAdd(item as CFDictionary, nil)
-    }
-}
-
-/// Gemini is limited to Flash-Lite 2.5 and newer, as on Android: larger models cost many times more.
-enum GeminiModels {
-    static func isLite(_ id: String) -> Bool {
-        let lower = id.lowercased()
-        guard let match = lower.wholeMatch(of: #/gemini-(\d+(?:\.\d+)?)-flash-lite(?:-[a-z0-9-]+)?/#),
-              let version = Double(match.1) else { return false }
-        return version >= 2.5
-    }
-
-    /// Lite models from a /models listing, newest first, without previews whose stable release is listed.
-    static func liteModels(from ids: [String]) -> [String] {
-        let lite = Set(ids.map { $0.replacingOccurrences(of: "models/", with: "") }.filter(isLite))
-        return lite
-            .filter { !($0.hasSuffix("-preview") && lite.contains(String($0.dropLast("-preview".count)))) }
-            .sorted { version(of: $0) > version(of: $1) || (version(of: $0) == version(of: $1) && $0 < $1) }
-    }
-
-    private static func version(of id: String) -> Double {
-        Double(id.dropFirst("gemini-".count).prefix { $0 != "-" }) ?? 0
     }
 }

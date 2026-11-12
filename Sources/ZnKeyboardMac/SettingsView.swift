@@ -130,13 +130,14 @@ struct SettingsView: View {
                     keyCheckRow
                 }
 
-                if provider == .gemini {
+                if !provider.models.isEmpty {
+                    // DeepSeek and Google offer a fixed list, as on iOS and Android.
                     Picker(L.model, selection: $model) {
-                        ForEach(modelOptions, id: \.self) { id in
-                            Text(id == Preferences.defaultModel ? "\(id)（\(L.recommended)）" : id).tag(id)
+                        ForEach(provider.models, id: \.self) { id in
+                            Text(id == provider.models.first && provider.models.count > 1 ? "\(id)（\(L.recommended)）" : id).tag(id)
                         }
                     }
-                    .onChange(of: model) { _, value in Preferences.setModel(value, for: .gemini) }
+                    .onChange(of: model) { _, value in Preferences.setModel(value, for: provider) }
                 } else {
                     // Any model ID can be typed; the server's list, once loaded, is a shortcut.
                     LabeledContent(L.model) {
@@ -368,13 +369,6 @@ struct SettingsView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
     }
 
-    /// The live Lite list once loaded; until then the saved and recommended models.
-    private var modelOptions: [String] {
-        var options = models.isEmpty ? [Preferences.defaultModel] : models
-        if !options.contains(model) { options.append(model) }
-        return options
-    }
-
     /// Loads the chosen provider's own key and model into the form.
     private func switchProvider(_ next: Provider) {
         Preferences.provider = next
@@ -413,7 +407,7 @@ struct SettingsView: View {
         do {
             let loaded = try await client.models()
             keyCheck = .works
-            if !loaded.isEmpty { models = loaded }
+            if provider == .openAICompatible, !loaded.isEmpty { models = loaded }
         } catch RewriteError.http(let code, let body) {
             if body.lowercased().contains("location is not supported") {
                 keyCheck = .unverified(L.regionUnsupported)
