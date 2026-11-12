@@ -48,7 +48,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             guard let controller = self?.controller else { return false }
             return controller.isPanelVisible && !controller.isPanelPinned
         }
-        caretToolbar.onPolish = { [weak self] in self?.controller.run(.polish) }
         caretToolbar.onTranslate = { [weak self] in self?.controller.run(.translate(Preferences.translateTarget)) }
         caretToolbar.onRead = { [weak self] in self?.controller.run(.read(Preferences.screenshotTarget, screenshot: false)) }
         caretToolbar.start()
@@ -104,9 +103,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         Self.showShortcut(Preferences.shortcut(for: .screenshot), on: screenshot)
         menu.addItem(screenshot)
 
-        let polish = NSMenuItem(title: L.polishSelection, action: #selector(polish), keyEquivalent: "")
-        polish.image = Self.symbol("sparkles")
-        menu.addItem(polish)
 
         let target = Preferences.translateTarget
         let translate = NSMenuItem(title: L.translateTo(target), action: #selector(translate), keyEquivalent: "")
@@ -162,7 +158,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     // Menu clicks happen while the menu has focus; give the source app a moment to take it back.
-    @objc private func polish() { runAfterMenuCloses(.polish) }
 
     @objc private func translate() { runAfterMenuCloses(.translate(Preferences.translateTarget)) }
 

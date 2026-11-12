@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// Shows 润色 | AI 翻译为 [EN ▾] next to text the user selects in an editable field. Keyboard
+/// Shows AI 翻译为 [EN ▾] next to text the user selects in an editable field. Keyboard
 /// selections (⌘A, ⇧-arrows) are found through Accessibility and the toolbar sits under them;
 /// mouse selections (drag, double or triple click) put it at the pointer, since browsers often
 /// don't report where a mouse selection is. Text selected with the mouse while reading (a web page,
@@ -10,7 +10,6 @@ import SwiftUI
 /// button is clicked.
 @MainActor
 final class CaretToolbar {
-    var onPolish: () -> Void = {}
     var onTranslate: () -> Void = {}
     /// Translate text selected while reading (the reading button).
     var onRead: () -> Void = {}
@@ -53,7 +52,6 @@ final class CaretToolbar {
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        model.onPolish = { [weak self] in self?.hide(); self?.onPolish() }
         model.onTranslate = { [weak self] in
             guard let self else { return }
             self.hide()
@@ -270,7 +268,6 @@ final class CaretToolbarModel: ObservableObject {
     @Published var reading = false
     /// The AI 翻译 shortcut, shown in the translate button's tooltip, e.g. "⇧⌘E".
     @Published var translateHint = ""
-    var onPolish: () -> Void = {}
     var onTranslate: () -> Void = {}
     var onChooseLanguage: () -> Void = {}
 }
@@ -280,15 +277,6 @@ private struct CaretToolbarView: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            if !model.reading {
-                Button(action: model.onPolish) {
-                    Label(L.polish, systemImage: "sparkles")
-                        .padding(.horizontal, 10)
-                        .frame(height: 26)
-                }
-                .help(L.polish)
-                Divider().frame(height: 16)
-            }
             HStack(spacing: 4) {
                 Button(action: model.onTranslate) {
                     Label(model.reading ? L.readShort : L.translateShort, systemImage: "translate")

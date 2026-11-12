@@ -18,7 +18,6 @@ enum L {
     static func translateTo(_ language: TranslateLanguage) -> String {
         t("AI 翻译为\(language.displayName)", "Translate to \(language.displayName)")
     }
-    static var polishSelection: String { t("润色选中文字", "Polish Selection") }
     static var translateShort: String { t("AI 翻译为", "Translate to") }
     static var translateMenu: String { t("AI 翻译语言", "Translation Language") }
     static var settings: String { t("设置…", "Settings…") }
@@ -126,12 +125,12 @@ enum L {
     static var modelIDPlaceholder: String { t("输入模型 ID", "Enter a model ID") }
     static var chooseModel: String { t("选择模型", "Choose a model") }
     static var deepSeekNote: String {
-        t("地址已内置，填好 API Key 就能用，国内可直连。润色或翻译时，选中的文字会发给 DeepSeek。",
-          "The address is built in, so a key is all you need; fast in mainland China. When you polish or translate, the selected text is sent to DeepSeek.")
+        t("地址已内置，填好 API Key 就能用，国内可直连。翻译时，选中的文字会发给 DeepSeek。",
+          "The address is built in, so a key is all you need; fast in mainland China. When you translate, the selected text is sent to DeepSeek.")
     }
     static var openAINote: String {
-        t("可接 OpenAI、OpenRouter 等兼容服务，填写对方的 API 地址和模型。润色或翻译时，选中的文字会发给该服务。",
-          "Works with OpenAI, OpenRouter and other compatible services: enter their API address and model. When you polish or translate, the selected text is sent to that service.")
+        t("可接 OpenAI、OpenRouter 等兼容服务，填写对方的 API 地址和模型。翻译时，选中的文字会发给该服务。",
+          "Works with OpenAI, OpenRouter and other compatible services: enter their API address and model. When you translate, the selected text is sent to that service.")
     }
     static var keyChecking: String { t("正在验证 API Key…", "Checking the API key…") }
     static var keyWorks: String { t("API Key 可用", "API key works") }
@@ -146,15 +145,15 @@ enum L {
     static var model: String { t("模型", "Model") }
     static var recommended: String { t("推荐", "recommended") }
     static var modelNote: String {
-        t("只提供速度快、费用低的 Flash-Lite 模型。润色或翻译时，选中的文字会发给 Google Gemini。",
-          "Only the fast, low-cost Flash-Lite models. When you polish or translate, the selected text is sent to Google Gemini.")
+        t("只提供速度快、费用低的 Flash-Lite 模型。翻译时，选中的文字会发给 Google Gemini。",
+          "Only the fast, low-cost Flash-Lite models. When you translate, the selected text is sent to Google Gemini.")
     }
 
     static var usageSection: String { t("使用", "Usage") }
     static var languagesGroup: String { t("翻译语言", "Languages") }
     static var buttonsGroup: String { t("选中文字时显示按钮", "Show buttons on selected text") }
     static var caretToolbar: String { t("输入框", "In text boxes") }
-    static var caretToolbarNote: String { t("润色、AI 翻译", "Polish and Translate") }
+    static var caretToolbarNote: String { t("AI 翻译", "Translate") }
     static var readingToolbar: String { t("网页和文档", "On web pages and documents") }
     static var readingToolbarNote: String { t("划词翻译", "Translate what you read") }
     static var readShort: String { t("翻译为", "Translate to") }
@@ -180,7 +179,7 @@ enum L {
     static var notGranted: String { t("未开启", "Off") }
     static var grant: String { t("去授权", "Grant Access…") }
     static var accessibilityNote: String {
-        t("用来读取和替换你选中的文字，润色和翻译都需要。", "Reads and replaces the text you select; Polish and Translate need it.")
+        t("用来读取和替换你选中的文字，翻译需要。", "Reads and replaces the text you select; Translate needs it.")
     }
     static var needAccessibilityMenu: String { t("需要开启辅助功能权限…", "Accessibility Access Needed…") }
 
