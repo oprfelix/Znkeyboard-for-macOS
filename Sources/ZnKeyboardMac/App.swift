@@ -60,17 +60,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func registerHotKey(_ action: ShortcutAction, _ shortcut: Shortcut) -> Bool {
         HotKeys.shared.register(id: action.hotKeyID, shortcut: shortcut) { [weak self] in
             switch action {
-            case .translate:
-                // Text that can't be edited (a web page, a document) gets a translation to read
-                // instead, so one shortcut serves both.
-                let app = NSWorkspace.shared.frontmostApplication
-                if let app, FocusedField.focusIsEditable(in: app) == false {
-                    self?.controller.run(.read(Preferences.screenshotTarget, screenshot: false))
-                } else {
-                    self?.controller.run(.translate(Preferences.translateTarget))
-                }
+            case .translate: self?.translateFrontmost()
             case .screenshot: self?.controller.runScreenshot()
             }
+        }
+    }
+
+    /// AI 翻译 from the shortcut or the menu: text that can't be edited (a web page, a document)
+    /// gets a translation to read instead, so one command serves both.
+    private func translateFrontmost() {
+        let app = NSWorkspace.shared.frontmostApplication
+        if let app, FocusedField.focusIsEditable(in: app) == false {
+            controller.run(.read(Preferences.screenshotTarget, screenshot: false))
+        } else {
+            controller.run(.translate(Preferences.translateTarget))
         }
     }
 
@@ -110,12 +113,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         Self.showShortcut(Preferences.shortcut(for: .translate), on: translate)
         menu.addItem(translate)
 
+        // Two lists: what text boxes are translated into, and what reading and screenshots are.
         let languages = NSMenu()
-        for language in Languages.all {
-            let item = NSMenuItem(title: "\(language.code) · \(language.displayName)", action: #selector(chooseLanguage(_:)), keyEquivalent: "")
-            item.representedObject = language.code
-            item.state = language == target ? .on : .off
-            languages.addItem(item)
+        let reading = Preferences.screenshotTarget
+        for (title, current, action) in [
+            (L.translateMenu, target, #selector(chooseLanguage(_:))),
+            (L.screenshotTarget, reading, #selector(chooseReadingLanguage(_:))),
+        ] {
+            if !languages.items.isEmpty { languages.addItem(.separator()) }
+            languages.addItem(NSMenuItem.sectionHeader(title: title))
+            for language in Languages.all {
+                let item = NSMenuItem(title: "\(language.code) · \(language.displayName)", action: action, keyEquivalent: "")
+                item.representedObject = language.code
+                item.state = language == current ? .on : .off
+                languages.addItem(item)
+            }
         }
         let languagesItem = NSMenuItem(title: L.translateMenu, action: nil, keyEquivalent: "")
         languagesItem.image = Self.symbol("globe")
@@ -159,12 +171,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // Menu clicks happen while the menu has focus; give the source app a moment to take it back.
 
-    @objc private func translate() { runAfterMenuCloses(.translate(Preferences.translateTarget)) }
+    @objc private func translate() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in self?.translateFrontmost() }
+    }
 
 
     @objc private func chooseLanguage(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }
         Preferences.translateTarget = Languages.language(code: code)
+    }
+
+    @objc private func chooseReadingLanguage(_ sender: NSMenuItem) {
+        guard let code = sender.representedObject as? String else { return }
+        Preferences.screenshotTarget = Languages.language(code: code)
     }
 
     @objc private func openSettings() { showSettings() }
@@ -204,10 +223,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }
 
-
-    private func runAfterMenuCloses(_ mode: RewriteMode) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in self?.controller.run(mode) }
-    }
 
     private func showSettings() {
         if settingsWindow == nil {

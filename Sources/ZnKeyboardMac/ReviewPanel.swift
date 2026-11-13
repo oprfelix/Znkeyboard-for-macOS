@@ -9,7 +9,7 @@ final class ReviewModel: ObservableObject {
         case error(String, offerSettings: Bool)
     }
 
-    @Published var mode = RewriteMode.polish
+    @Published var mode = RewriteMode.translate(Languages.language(code: "EN"))
     @Published var state = State.loading
     /// Screenshot translation shows the recognised text above the translation.
     @Published var original: String?
@@ -286,9 +286,6 @@ private struct ReviewView: View {
     private var header: some View {
         HStack(spacing: 6) {
             switch model.mode {
-            case .polish:
-                Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
-                Text(L.polish).font(.headline)
             case .read(let language, let screenshot):
                 Image(systemName: screenshot ? "text.viewfinder" : "translate").foregroundStyle(Color.accentColor)
                 Text(screenshot ? L.screenshotTranslateTo : L.readShort).font(.headline)

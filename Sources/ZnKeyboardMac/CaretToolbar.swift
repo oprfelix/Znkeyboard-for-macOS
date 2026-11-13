@@ -21,6 +21,8 @@ final class CaretToolbar {
     private var lastSignature = ""
     private var unchangedSince = Date()
     private var accessibilityEnabledPIDs = Set<pid_t>()
+    /// Chromium browsers given AXEnhancedUserInterface, which they needed to report a focused field.
+    private var enhancedPIDs = Set<pid_t>()
     private var monitors: [Any] = []
     private var mouseDownPoint: NSPoint?
     /// When ⌘A or ⇧ with an arrow, Home, End or Page key was last pressed. A selection that appears
@@ -82,6 +84,18 @@ final class CaretToolbar {
                 }
             },
         ].compactMap { $0 }
+        // A quit app's pid can come back as another app, which must be set up again.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+            let pid = app.processIdentifier
+            MainActor.assumeIsolated {
+                self?.accessibilityEnabledPIDs.remove(pid)
+                self?.enhancedPIDs.remove(pid)
+                TextBridge.forget(pid)
+            }
+        }
     }
 
     private static let extendKeys: Set<Int> = [
@@ -160,14 +174,18 @@ final class CaretToolbar {
             reset()
             return
         }
-        enableAccessibility(for: app)
         if let pid = mouseAnchorPID {
             // A mouse-anchored toolbar stays until the user moves on; switching apps counts.
             if pid != app.processIdentifier { endMouseAnchor() }
             return
         }
+        // Keyboard selections only show the toolbar within 2 s of a selecting key, so while none was
+        // pressed and nothing is showing there is nothing to ask the app: no polling at rest.
+        guard panel.isVisible || Date().timeIntervalSince(lastSelectionKey) < 2 else { return }
+        enableAccessibility(for: app)
         // Keyboard selections are for text boxes only: ⌘A on a page selects the whole page.
         guard Preferences.caretToolbar, let field = FocusedField.current(in: app), field.hasSelection else {
+            if Preferences.caretToolbar { enhanceIfNeeded(app) }
             reset()
             return
         }
@@ -254,11 +272,19 @@ final class CaretToolbar {
     private func enableAccessibility(for app: NSRunningApplication) {
         let pid = app.processIdentifier
         guard accessibilityEnabledPIDs.insert(pid).inserted else { return }
-        let element = AXUIElementCreateApplication(pid)
-        AXUIElementSetAttributeValue(element, "AXManualAccessibility" as CFString, kCFBooleanTrue)
-        if let id = app.bundleIdentifier, Self.chromiumBrowsers.contains(id) {
-            AXUIElementSetAttributeValue(element, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
-        }
+        AXUIElementSetAttributeValue(AXUIElementCreateApplication(pid), "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    }
+
+    /// AXEnhancedUserInterface slows Chromium's window animations and confuses window managers
+    /// (Rectangle, Magnet), so it is set only for a Chromium browser that reports no focused element
+    /// at all with AXManualAccessibility alone.
+    private func enhanceIfNeeded(_ app: NSRunningApplication) {
+        let pid = app.processIdentifier
+        guard let id = app.bundleIdentifier, Self.chromiumBrowsers.contains(id), !enhancedPIDs.contains(pid),
+              FocusedField.focusIsEditable(in: app) == nil else { return }
+        enhancedPIDs.insert(pid)
+        CaretLog.note("no focused element in \(id): enhanced user interface on")
+        AXUIElementSetAttributeValue(AXUIElementCreateApplication(pid), "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
     }
 }
 

@@ -103,7 +103,7 @@ enum Preferences {
         return id
     }
 
-    /// Polish and translate runs not yet reported.
+    /// Translations not yet reported.
     static var pendingUses: Int {
         get { UserDefaults.standard.integer(forKey: "pendingUses") }
         set { UserDefaults.standard.set(max(newValue, 0), forKey: "pendingUses") }

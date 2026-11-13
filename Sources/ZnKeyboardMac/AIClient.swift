@@ -1,8 +1,8 @@
 import Foundation
 
-/// Polish or translate a piece of text. Translation also polishes.
+/// Translate a piece of text, to send (in a text box) or to read.
 enum RewriteMode {
-    case polish
+    /// Into the target language, polished to send; replaces the selection.
     case translate(TranslateLanguage)
     /// A faithful translation to read, not a rewrite to send: of text selected while reading, or of a screenshot.
     case read(TranslateLanguage, screenshot: Bool)
@@ -25,14 +25,24 @@ enum RewriteError: LocalizedError {
         case .tooLong: L.tooLong
         case .noChange: L.noChange
         case .http(let code, _) where Self.isBusy(code): L.providerBusy(code)
-        case .http(let code, let body):
-            code == 400 || code == 401 || code == 403 ? L.keyRejected : L.requestFailed(code, body)
+        case .http(let code, _) where code == 401 || code == 403: L.keyRejected
+        case .http(let code, let body) where [400, 404, 422].contains(code): L.badRequest(code, Self.reason(body))
+        case .http(let code, let body): L.requestFailed(code, body)
         case .badResponse: L.badResponse
         }
     }
 
     /// Too many requests, or the server failing or overloaded (DeepSeek's 503 "Service is too busy"): worth trying again.
     static func isBusy(_ code: Int) -> Bool { code == 429 || code >= 500 }
+
+    /// The server's own words from an OpenAI-style error body (`{"error": {"message": …}}`), shortened.
+    static func reason(_ body: String) -> String {
+        guard let json = try? JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any] else { return "" }
+        let error = json["error"]
+        let message = (error as? [String: Any])?["message"] as? String ?? error as? String ?? json["message"] as? String ?? ""
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.count > 160 ? String(trimmed.prefix(160)) + "…" : trimmed
+    }
 }
 
 /// Talks to Gemini's OpenAI-compatible endpoint or any other OpenAI-compatible server, with the
@@ -211,7 +221,7 @@ enum Prompts {
         """
 
     private static let fallback = """
-        Polish the user's text while preserving its meaning, tone, and language. \
+        Rewrite the user's text clearly while preserving its meaning and tone. \
         Return a valid JSON object with exactly one field, `text`, containing only the rewritten text.
         """
 }

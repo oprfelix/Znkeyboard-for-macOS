@@ -57,11 +57,21 @@ enum Updates {
     /// Checks shortly after launch and then every few hours, at most once a day; tells about each
     /// new version once. Off when the user turned automatic checks off.
     static func startAutomaticChecks() {
+        removeOldDownloads()
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 3 * 3600, repeats: true) { _ in
             MainActor.assumeIsolated { automaticCheck() }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 20) { automaticCheck() }
+    }
+
+    /// Downloads left by earlier updates, finished or failed; the running app no longer needs them.
+    private static func removeOldDownloads() {
+        let temp = FileManager.default.temporaryDirectory
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: temp.path)) ?? []
+        for name in names where name.hasPrefix("znkeyboard-update-") {
+            try? FileManager.default.removeItem(at: temp.appendingPathComponent(name))
+        }
     }
 
     private static func automaticCheck() {
@@ -150,8 +160,10 @@ enum Updates {
                 try swapIn(newApp)
                 relaunch()
             } catch is CancellationError {
+                removeOldDownloads()
                 closeProgress()
             } catch {
+                removeOldDownloads()
                 closeProgress()
                 let reason = (error as? UpdateError)?.message ?? error.localizedDescription
                 if await ask(L.updateFailed, L.updateFailedNote(reason), primary: L.openReleases, secondary: L.ok) {

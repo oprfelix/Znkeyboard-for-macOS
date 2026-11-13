@@ -14,7 +14,6 @@ enum L {
     private static func t(_ zh: String, _ en: String) -> String { isChinese ? zh : en }
 
     // Menu
-    static var polish: String { t("润色", "Polish") }
     static func translateTo(_ language: TranslateLanguage) -> String {
         t("AI 翻译为\(language.displayName)", "Translate to \(language.displayName)")
     }
@@ -99,7 +98,13 @@ enum L {
     static var noSelection: String { t("请先选中要处理的文字。", "Select some text first.") }
     static var tooLong: String { t("文字太长，请分段处理（最多 5000 字）。", "The text is too long; do it in parts (5,000 characters max).") }
     static var noChange: String { t("没有需要修改的地方。", "Nothing to change.") }
-    static var keyRejected: String { t("服务商拒绝了请求，请检查 API Key 和模型。", "The request was rejected. Check your API key and model.") }
+    static var keyRejected: String { t("API Key 无效或没有权限，请在设置里检查 Key。", "The API key was refused. Check it in Settings.") }
+    /// 400/404/422: usually a model the server doesn't have, or an address that isn't its API.
+    static func badRequest(_ code: Int, _ reason: String) -> String {
+        let reason = reason.isEmpty ? "" : "\n\(reason)"
+        return t("服务商不接受这个请求（\(code)），请在设置里检查模型和 API 地址。\(reason)",
+                 "The provider didn't accept the request (\(code)). Check the model and API address in Settings.\(reason)")
+    }
     static var badResponse: String { t("AI 没有返回可用的结果，请再试一次。", "The AI returned nothing usable. Try again.") }
     static func providerBusy(_ code: Int) -> String {
         t("AI 服务商暂时繁忙（\(code)），自动重试后仍未成功。请稍后再试，或在设置里换用其他服务商。",

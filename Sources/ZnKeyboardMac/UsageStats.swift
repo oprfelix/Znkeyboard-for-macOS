@@ -1,14 +1,14 @@
 import Foundation
 
 /// The anonymous daily ping behind the numbers on znkeyboard.2amz.com: a random id made on this Mac,
-/// the platform, the version and how many times text was polished or translated since the last
+/// the platform, the version and how many times text was translated since the last
 /// ping. Never any text, key or setting. Off when the user turns it off in Settings.
 @MainActor
 enum UsageStats {
     private static let endpoint = URL(string: "https://znkeyboard.2amz.com/api/ping")!
     private static var sending = false
 
-    /// One finished polish, translation or reading translation.
+    /// One finished translation or reading translation.
     static func recordUse() {
         guard Preferences.anonymousStats else { return }
         Preferences.pendingUses += 1

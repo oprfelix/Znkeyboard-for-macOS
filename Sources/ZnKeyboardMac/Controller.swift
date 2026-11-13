@@ -17,7 +17,7 @@ final class Controller {
     /// A pinned translation card, which selections beside it don't wait for.
     var isPanelPinned: Bool { panel.isVisible && panel.staysOpen }
 
-    /// Polish or translate the selection, or (`.read`) translate text selected while reading.
+    /// Translate the selection in place, or (`.read`) translate text selected while reading.
     func run(_ mode: RewriteMode) {
         CaretLog.note("shortcut pressed (#\(generation + 1))")
         generation += 1
@@ -193,12 +193,13 @@ final class Controller {
         guard request != nil else { return }
         generation += 1
         let current = generation
-        let mode = next ?? lastMode
+        guard let mode = next ?? lastMode else { return }
         panel.showLoading(mode: mode)
         Task { await rewrite(mode: mode, generation: current) }
     }
 
-    private var lastMode = RewriteMode.polish
+    /// The mode of the last request, which ↻ runs again.
+    private var lastMode: RewriteMode?
     /// Set while macOS's screenshot selection is up; another screenshot shortcut then does nothing.
     private var capturing = false
 
@@ -224,7 +225,7 @@ final class Controller {
                 ?? ((error as? URLError) != nil ? L.networkFailed : error.localizedDescription)
             // Key, model or endpoint problems are fixed in Settings; anything else may pass on a retry.
             let fixableInSettings: Bool = switch error as? RewriteError {
-            case .missingKey, .missingModel, .badEndpoint, .http(400, _), .http(401, _), .http(403, _), .http(404, _): true
+            case .missingKey, .missingModel, .badEndpoint, .http(400, _), .http(401, _), .http(403, _), .http(404, _), .http(422, _): true
             default: false
             }
             panel.showError(message, offerSettings: fixableInSettings, canRetry: !fixableInSettings)
